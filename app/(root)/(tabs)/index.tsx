@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../src/context/AuthContext";
 import { InventoryContext } from "../../../src/context/InventoryContext";
 import { useRouter } from "expo-router";
+import { DashboardActivity } from "@/src/components/dashboard/DashboardActivity";
 
 interface DashboardStats {
   totalProducts: number;
@@ -136,13 +137,13 @@ const DashboardScreen = () => {
             <QuickAction
               icon="add-circle-outline"
               label="Add Product"
-              onPress={() => router.push("/(auth)/product-detail")}
+              onPress={() => router.push("/(root)/product-detail")}
               color="#10b981"
             />
             <QuickAction
               icon="cart-outline"
               label="Checkout"
-              onPress={() => router.push("/checkout")}
+              onPress={() => router.push("/(root)/checkout")}
               color="#f59e0b"
             />
             <QuickAction
@@ -192,14 +193,7 @@ const DashboardScreen = () => {
         </View>
 
         {/* Recent Activity (placeholder) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.recentActivityCard}>
-            <Text style={styles.recentActivityEmptyText}>
-              Recent sales and inventory changes will appear here.
-            </Text>
-          </View>
-        </View>
+        <DashboardActivity limit={5} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -209,6 +203,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    paddingTop: 30,
   },
   loadingContainer: {
     flex: 1,

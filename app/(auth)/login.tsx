@@ -1,22 +1,24 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  SafeAreaView,
 } from "react-native";
-import { AuthContext } from "../../src/context/AuthContext";
+import { useLogin } from "../../src/hooks/useAuth";
+import { router } from "expo-router";
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const { login, isLoading } = useContext(AuthContext);
+const LoginScreen = () => {
+  const [email, setEmail] = useState("user@example.com");
+  const [password, setPassword] = useState("password123");
+
+  const loginMutation = useLogin();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -24,71 +26,83 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    const result = await login(email, password);
+    // Simple email validation
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
 
-    if (result.success) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "MainApp" }],
-      });
-    } else {
-      Alert.alert("Login Failed", result.message);
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      // Navigation will be handled by the app's root navigator
+      // based on the presence of userToken
+    } catch (error: any) {
+      // Handle error from mutation
+      Alert.alert(
+        "Login Failed",
+        error.response?.data?.message ||
+          "Please check your credentials and try again"
+      );
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.logoContainer}>
-        <Text style={styles.logoText}>ScanStock Pro</Text>
-        <Text style={styles.tagline}>
-          Inventory Management for Small Business
-        </Text>
-      </View>
-
-      <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.loginButtonText}>Login</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Register")}
-          style={styles.registerLink}
-        >
-          <Text style={styles.registerText}>
-            Don't have an account?{" "}
-            <Text style={styles.registerTextBold}>Sign Up</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.logoContainer}>
+          <Text style={styles.logoText}>ScanStock Pro</Text>
+          <Text style={styles.tagline}>
+            Inventory Management for Small Business
           </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+
+        <View style={styles.formContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.navigate("/(auth)/register")}
+            style={styles.registerLink}
+          >
+            <Text style={styles.registerText}>
+              Don't have an account?{" "}
+              <Text style={styles.registerTextBold}>Sign Up</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -97,10 +111,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  keyboardView: {
+    flex: 1,
+  },
   logoContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingTop: 50,
   },
   logoText: {
     fontSize: 32,
@@ -115,6 +133,7 @@ const styles = StyleSheet.create({
   formContainer: {
     flex: 2,
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   input: {
     backgroundColor: "#fff",
@@ -124,6 +143,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: "#e2e8f0",
+    fontSize: 16,
   },
   loginButton: {
     backgroundColor: "#2563eb",

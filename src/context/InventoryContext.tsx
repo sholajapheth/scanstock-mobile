@@ -6,9 +6,10 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-import { Alert } from "react-native";
 import { AuthContext } from "./AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../lib/api-client";
+import { Logger } from "../utils/logger";
 
 // Define types
 export interface Product {
@@ -36,22 +37,24 @@ export interface SaleData {
   date: string;
 }
 
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
 interface InventoryContextType {
   inventory: Product[];
   cart: CartItem[];
   isLoading: boolean;
   error: string | null;
   fetchInventory: () => Promise<void>;
-  addProduct: (
-    product: Omit<Product, "id">
-  ) => Promise<{ success: boolean; product?: Product; message?: string }>;
+  addProduct: (product: Omit<Product, "id">) => Promise<ApiResponse<Product>>;
   updateProduct: (
     productId: number,
     product: Partial<Product>
-  ) => Promise<{ success: boolean; product?: Product; message?: string }>;
-  deleteProduct: (
-    productId: number
-  ) => Promise<{ success: boolean; message?: string }>;
+  ) => Promise<ApiResponse<Product>>;
+  deleteProduct: (productId: number) => Promise<ApiResponse>;
   generateBarcode: () => string;
   findProductByBarcode: (barcode: string) => Product | undefined;
   addToCart: (product: Product, quantity?: number) => void;
@@ -59,9 +62,7 @@ interface InventoryContextType {
   updateCartItemQuantity: (productId: number, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
-  checkout: (
-    saleData: SaleData
-  ) => Promise<{ success: boolean; sale?: any; message?: string }>;
+  checkout: (saleData: SaleData) => Promise<ApiResponse>;
 }
 
 interface InventoryProviderProps {
@@ -73,114 +74,98 @@ export const InventoryContext = createContext<InventoryContextType>(
   {} as InventoryContextType
 );
 
-// API base URL - update with your NestJS backend URL
-const API_URL = "http://localhost:3000/api";
+// Create logger for inventory context
+const log = new Logger("Inventory");
 
 export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   children,
 }) => {
-  const [inventory, setInventory] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { userToken } = useContext(AuthContext);
+  const queryClient = useQueryClient();
 
-  // Load inventory when token changes
+  // Query for fetching inventory
+  const { data: inventory = [], isLoading } = useQuery({
+    queryKey: ["inventory"],
+    queryFn: async () => {
+      if (!userToken) return [];
+
+      const response = await api.get("/products");
+      if (response.data) {
+        return response.data;
+      } else {
+        setError(response.message || "Failed to load inventory");
+        log.error("Fetch inventory error:", response.message);
+        return [];
+      }
+    },
+    enabled: !!userToken, // Only run if we have a token
+  });
+
+  // Mutation for adding product
+  const addProductMutation = useMutation({
+    mutationFn: async (productData: Omit<Product, "id">) => {
+      return api.post("/products", productData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+
+  // Mutation for updating product
+  const updateProductMutation = useMutation({
+    mutationFn: async ({
+      productId,
+      productData,
+    }: {
+      productId: number;
+      productData: Partial<Product>;
+    }) => {
+      return api.patch(`/products/${productId}`, productData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+
+  // Mutation for deleting product
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      return api.delete(`/products/${productId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+
+  // Mutation for checkout
+  const checkoutMutation = useMutation({
+    mutationFn: async (saleData: SaleData) => {
+      const sale = {
+        items: cart.map((item) => ({
+          productId: Number(item.id),
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+        })),
+        total: getCartTotal(),
+        customerInfo: saleData.customerInfo,
+        date: saleData.date,
+      };
+
+      return api.post("/sales", sale);
+    },
+    onSuccess: () => {
+      clearCart();
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+
   useEffect(() => {
     if (userToken) {
-      fetchInventory();
       loadCart();
     }
   }, [userToken]);
-
-  // Fetch inventory from API
-  const fetchInventory = async () => {
-    if (!userToken) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.get(`${API_URL}/products`);
-      setInventory(response.data);
-    } catch (error: any) {
-      console.log("Fetch inventory error:", error);
-      setError("Failed to load inventory");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Add product to inventory
-  const addProduct = async (productData: Omit<Product, "id">) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.post(`${API_URL}/products`, productData);
-      setInventory([...inventory, response.data]);
-      return { success: true, product: response.data };
-    } catch (error: any) {
-      console.log("Add product error:", error);
-      setError("Failed to add product");
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to add product",
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Update product in inventory
-  const updateProduct = async (
-    productId: number,
-    productData: Partial<Product>
-  ) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.patch(
-        `${API_URL}/products/${productId}`,
-        productData
-      );
-      setInventory(
-        inventory.map((item) => (item.id === productId ? response.data : item))
-      );
-      return { success: true, product: response.data };
-    } catch (error: any) {
-      console.log("Update product error:", error);
-      setError("Failed to update product");
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to update product",
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Delete product from inventory
-  const deleteProduct = async (productId: number) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await axios.delete(`${API_URL}/products/${productId}`);
-      setInventory(inventory.filter((item) => item.id !== productId));
-      return { success: true };
-    } catch (error: any) {
-      console.log("Delete product error:", error);
-      setError("Failed to delete product");
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to delete product",
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Generate a unique barcode for a product
   const generateBarcode = (): string => {
@@ -241,7 +226,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     try {
       await AsyncStorage.setItem("cart", JSON.stringify(cart));
     } catch (error) {
-      console.log("Save cart error:", error);
+      log.error("Save cart error:", error);
     }
   };
 
@@ -252,7 +237,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
         setCart(JSON.parse(savedCart));
       }
     } catch (error) {
-      console.log("Load cart error:", error);
+      log.error("Load cart error:", error);
     }
   };
 
@@ -261,41 +246,36 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
-  // Checkout - process sale and update inventory
+  // Wrapper methods that expose the API response structure
+  const addProduct = async (product: Omit<Product, "id">) => {
+    log.info("Adding product:", product.name);
+    return addProductMutation.mutateAsync(product);
+  };
+
+  const updateProduct = async (
+    productId: number,
+    product: Partial<Product>
+  ) => {
+    log.info("Updating product:", productId);
+    return updateProductMutation.mutateAsync({
+      productId,
+      productData: product,
+    });
+  };
+
+  const deleteProduct = async (productId: number) => {
+    log.info("Deleting product:", productId);
+    return deleteProductMutation.mutateAsync(productId);
+  };
+
   const checkout = async (saleData: SaleData) => {
-    setIsLoading(true);
-    setError(null);
+    log.info("Processing checkout with items:", cart.length);
+    return checkoutMutation.mutateAsync(saleData);
+  };
 
-    try {
-      // Create sale record with items
-      const sale = {
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        ...saleData,
-      };
-
-      const response = await axios.post(`${API_URL}/sales`, sale);
-
-      // Clear cart after successful checkout
-      clearCart();
-
-      // Refresh inventory to get updated quantities
-      await fetchInventory();
-
-      return { success: true, sale: response.data };
-    } catch (error: any) {
-      console.log("Checkout error:", error);
-      setError("Checkout failed");
-      return {
-        success: false,
-        message: error.response?.data?.message || "Checkout failed",
-      };
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchInventory = async () => {
+    log.info("Refreshing inventory");
+    await queryClient.invalidateQueries({ queryKey: ["inventory"] });
   };
 
   return (

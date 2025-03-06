@@ -52,13 +52,6 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
-      <Tabs.Screen
-        name="checkout"
-        options={{
-          title: "Checkout",
-          headerShown: false,
-        }}
-      />
     </Tabs>
   );
 }

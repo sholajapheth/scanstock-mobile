@@ -39,7 +39,6 @@ export const AuthContext = createContext<AuthContextType>(
 );
 
 // API base URL - update with your NestJS backend URL
-const API_URL = "http://localhost:3000/api";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -57,7 +56,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
           // Fetch user data
-          const response = await axios.get(`${API_URL}/users/me`);
+          const response = await axios.get(
+            `${process.env.EXPO_PUBLIC_BASE_URL}/users/me`
+          );
           setUser(response.data);
           setUserToken(token);
         }
@@ -75,10 +76,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        `${process.env.EXPO_PUBLIC_BASE_URL}/auth/login`,
+        {
+          email,
+          password,
+        }
+      );
 
       const { access_token, user } = response.data;
 
@@ -104,7 +108,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData) => {
     setIsLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/register`, userData);
+      await axios.post(
+        `${process.env.EXPO_PUBLIC_BASE_URL}/auth/register`,
+        userData
+      );
       return { success: true };
     } catch (error: any) {
       console.log("Register error:", error.response?.data || error.message);

@@ -1,137 +1,61 @@
-import React, { useState, useEffect, useContext } from "react";
+// src/screens/ProductDetailScreen.tsx
+import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { InventoryContext } from "@/src/context/InventoryContext";
+import { useProductDetail } from "../../../src/hooks/useProductDetail";
+import { Logger } from "../../../src/utils/logger";
 
-interface Product {
-  id?: number;
-  name: string;
-  price: number;
-  barcode: string;
-  description: string;
-  quantity: number;
-}
+const log = new Logger("ProductDetailScreen");
 
 const ProductDetailScreen = () => {
   const { productId, barcode } = useLocalSearchParams();
   const router = useRouter();
-  const isNewProduct = !productId;
 
-  const [product, setProduct] = useState<Product>({
-    name: "",
-    price: 0,
-    barcode: barcode?.toString() || "",
-    description: "",
-    quantity: 0,
+  log.debug(
+    `Rendering ProductDetailScreen with productId=${productId}, barcode=${barcode}`
+  );
+
+  // Use our custom hook for all business logic
+  const {
+    product,
+    isLoading,
+    isNewProduct,
+    deleteConfirmVisible,
+    setDeleteConfirmVisible,
+    updateField,
+    saveProduct,
+    deleteProduct,
+    handleGenerateBarcode,
+  } = useProductDetail({
+    productId: productId as string,
+    initialBarcode: barcode as string,
+    onSaveSuccess: () => router.back(),
   });
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [deleteConfirmVisible, setDeleteConfirmVisible] =
-    useState<boolean>(false);
-
-  const {
-    inventory,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    generateBarcode,
-  } = useContext(InventoryContext);
-
-  // Load product data if editing an existing product
-  useEffect(() => {
-    if (productId) {
-      const existingProduct = inventory.find(
-        (item) => item.id === Number(productId)
-      );
-      if (existingProduct) {
-        setProduct(existingProduct);
-      }
-    }
-
-    // If it's a new product and no barcode was provided, generate one
-    if (isNewProduct && !barcode) {
-      handleGenerateBarcode();
-    }
-  }, [productId, inventory]);
-
+  // Event handlers
   const handleSave = async () => {
-    // Validate form
-    if (!product.name.trim()) {
-      Alert.alert("Error", "Product name is required");
-      return;
-    }
-
-    if (product.price <= 0) {
-      Alert.alert("Error", "Price must be greater than zero");
-      return;
-    }
-
-    if (!product.barcode) {
-      Alert.alert("Error", "Barcode is required");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      let result;
-
-      if (isNewProduct) {
-        // Add new product
-        result = await addProduct(product);
-      } else {
-        // Update existing product
-        result = await updateProduct(Number(productId), product);
-      }
-
-      if (result.success) {
-        router.back();
-      } else {
-        Alert.alert("Error", result.message || "Failed to save product");
-      }
-    } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred");
-      console.error("Save product error:", error);
-    } finally {
-      setIsLoading(false);
+    log.info("Save button pressed");
+    const success = await saveProduct();
+    if (success) {
+      router.back();
     }
   };
 
   const handleDelete = async () => {
-    if (!productId) return;
-
-    setIsLoading(true);
-
-    try {
-      const result = await deleteProduct(Number(productId));
-
-      if (result.success) {
-        router.back();
-      } else {
-        Alert.alert("Error", result.message || "Failed to delete product");
-      }
-    } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred");
-      console.error("Delete product error:", error);
-    } finally {
-      setIsLoading(false);
-      setDeleteConfirmVisible(false);
+    log.info("Delete button pressed");
+    const success = await deleteProduct();
+    if (success) {
+      router.back();
     }
-  };
-
-  const handleGenerateBarcode = () => {
-    const newBarcode = generateBarcode();
-    setProduct({ ...product, barcode: newBarcode });
   };
 
   const DeleteConfirmation = () => (
@@ -171,7 +95,7 @@ const ProductDetailScreen = () => {
           <TextInput
             style={styles.input}
             value={product.name}
-            onChangeText={(text) => setProduct({ ...product, name: text })}
+            onChangeText={(text) => updateField("name", text)}
             placeholder="Enter product name"
           />
         </View>
@@ -184,7 +108,7 @@ const ProductDetailScreen = () => {
             value={product.price.toString()}
             onChangeText={(text) => {
               const price = parseFloat(text) || 0;
-              setProduct({ ...product, price });
+              updateField("price", price);
             }}
             keyboardType="decimal-pad"
             placeholder="0.00"
@@ -199,7 +123,7 @@ const ProductDetailScreen = () => {
             value={product.quantity.toString()}
             onChangeText={(text) => {
               const quantity = parseInt(text) || 0;
-              setProduct({ ...product, quantity });
+              updateField("quantity", quantity);
             }}
             keyboardType="number-pad"
             placeholder="0"
@@ -207,26 +131,26 @@ const ProductDetailScreen = () => {
         </View>
 
         {/* Barcode */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Barcode</Text>
-          <View style={styles.barcodeContainer}>
-            <TextInput
-              style={[styles.input, styles.barcodeInput]}
-              value={product.barcode}
-              onChangeText={(text) => setProduct({ ...product, barcode: text })}
-              placeholder="Enter barcode"
-              editable={isNewProduct}
-            />
-            {isNewProduct && (
+        {isNewProduct && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Barcode</Text>
+            <View style={styles.barcodeContainer}>
+              <TextInput
+                style={[styles.input, styles.barcodeInput]}
+                value={product.barcode}
+                onChangeText={(text) => updateField("barcode", text)}
+                placeholder="Enter barcode"
+                editable={isNewProduct}
+              />
               <TouchableOpacity
                 style={styles.generateButton}
                 onPress={handleGenerateBarcode}
               >
                 <Ionicons name="refresh" size={20} color="#fff" />
               </TouchableOpacity>
-            )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Description */}
         <View style={styles.formGroup}>
@@ -234,9 +158,7 @@ const ProductDetailScreen = () => {
           <TextInput
             style={[styles.input, styles.textArea]}
             value={product.description}
-            onChangeText={(text) =>
-              setProduct({ ...product, description: text })
-            }
+            onChangeText={(text) => updateField("description", text)}
             placeholder="Enter product description"
             multiline
             numberOfLines={4}

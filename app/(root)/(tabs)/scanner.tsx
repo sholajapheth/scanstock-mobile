@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,26 +6,33 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
 import {
   Camera,
   CameraType,
-  BarCodeScanningResult,
+  BarcodeScanningResult,
   CameraView,
 } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
-import { InventoryContext } from "../../../src/context/InventoryContext";
-import { useRouter } from "expo-router";
+import { useProductByBarcode } from "../../../src/hooks/useProducts";
+import { useCart } from "../../../src/hooks/useCart";
+import { router } from "expo-router";
 
 const ScannerScreen = () => {
-  const router = useRouter();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const [scanMode, setScanMode] = useState("inventory"); // 'inventory' or 'checkout'
+  const [barcode, setBarcode] = useState<string | null>(null);
 
-  const { findProductByBarcode, addToCart, inventory, isLoading } =
-    useContext(InventoryContext);
+  const {
+    data: scannedProduct,
+    isLoading: isLoadingProduct,
+    error: productError,
+  } = useProductByBarcode(barcode);
+  const { addToCart } = useCart();
 
+  // Request camera permission
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -33,50 +40,86 @@ const ScannerScreen = () => {
     })();
   }, []);
 
-  const handleBarCodeScanned = ({ type, data }: BarCodeScanningResult) => {
-    console.log(data);
-    if (scanned) return;
-
-    setScanned(true);
+  // Handle product found or not found
+  useEffect(() => {
+    if (!barcode || !scanned) return;
 
     if (scanMode === "inventory") {
-      // Check if product exists in inventory
-      const product = findProductByBarcode(data);
-
-      if (product) {
+      if (scannedProduct) {
         // Product exists, navigate to product detail
-        router.push(`/product-detail/${product.id}`);
-      } else {
+        router.navigate({
+          pathname: "/(root)/product-detail",
+          params: { productId: scannedProduct.id },
+        });
+        setBarcode(null);
+      } else if (productError) {
         // Product doesn't exist, navigate to create new product
-        router.push(`/product-detail?barcode=${data}`);
-      }
-    } else if (scanMode === "checkout") {
-      // Find product for checkout
-      const product = findProductByBarcode(data);
-
-      if (product) {
-        if (product.quantity > 0) {
-          // Add to cart
-          addToCart(product);
-          Alert.alert(
-            "Added to Cart",
-            `${product.name} - $${product.price.toFixed(2)}`
-          );
-        } else {
-          Alert.alert("Out of Stock", `${product.name} is out of stock!`);
-        }
-      } else {
         Alert.alert(
           "Product Not Found",
-          "This barcode is not in your inventory"
+          "Would you like to add this product?",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => {
+                setScanned(false);
+                setBarcode(null);
+              },
+            },
+            {
+              text: "Add Product",
+              onPress: () => {
+                router.navigate({
+                  pathname: "/(root)/product-detail",
+                  params: { barcode },
+                });
+                setBarcode(null);
+              },
+            },
+          ]
         );
       }
+    } else if (scanMode === "checkout" && scannedProduct) {
+      // Add to cart
+      if (scannedProduct.quantity > 0) {
+        addToCart(scannedProduct);
+        Alert.alert(
+          "Added to Cart",
+          `${scannedProduct.name} - $${scannedProduct.price}`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setScanned(false);
+                setBarcode(null);
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Out of Stock", `${scannedProduct.name} is out of stock!`, [
+          {
+            text: "OK",
+            onPress: () => {
+              setScanned(false);
+              setBarcode(null);
+            },
+          },
+        ]);
+      }
     }
+  }, [scannedProduct, productError, barcode, scanMode]);
+
+  const handleBarCodeScanned = ({ type, data }: BarcodeScanningResult) => {
+    if (scanned) return;
+    setScanned(true);
+    setBarcode(data);
   };
 
   const toggleScanMode = () => {
     setScanMode(scanMode === "inventory" ? "checkout" : "inventory");
     setScanned(false);
+    setBarcode(null);
   };
 
   if (hasPermission === null) {
@@ -96,7 +139,7 @@ const ScannerScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Scan mode toggle */}
       <View style={styles.modeToggleContainer}>
         <TouchableOpacity
@@ -175,44 +218,53 @@ const ScannerScreen = () => {
           }}
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         />
-
         {/* Scanner overlay */}
         <View style={styles.overlay}>
           <View style={styles.scanArea} />
         </View>
 
-        {scanned && (
+        {scanned && !isLoadingProduct && (
           <TouchableOpacity
             style={styles.scanAgainButton}
-            onPress={() => setScanned(false)}
+            onPress={() => {
+              setScanned(false);
+              setBarcode(null);
+            }}
           >
             <Text style={styles.scanAgainButtonText}>Scan Again</Text>
           </TouchableOpacity>
         )}
 
-        {isLoading && (
+        {isLoadingProduct && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Checking product...</Text>
           </View>
         )}
       </View>
 
       {/* Manual entry button */}
-      <TouchableOpacity
-        style={styles.manualEntryButton}
-        onPress={() => {
-          if (scanMode === "inventory") {
-            router.push("/product-detail");
-          } else {
-            router.push("/inventory");
-          }
-        }}
-      >
-        <Text style={styles.manualEntryButtonText}>
-          {scanMode === "inventory" ? "Manual Entry" : "View Cart"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity
+          style={styles.manualEntryButton}
+          onPress={() => {
+            if (scanMode === "inventory") {
+              router.navigate({
+                pathname: "/(root)/product-detail",
+              });
+            } else {
+              router.navigate({
+                pathname: "/(root)/checkout",
+              });
+            }
+          }}
+        >
+          <Text style={styles.manualEntryButtonText}>
+            {scanMode === "inventory" ? "Manual Entry" : "View Cart"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -220,6 +272,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    paddingTop: 30,
   },
   modeToggleContainer: {
     flexDirection: "row",
@@ -278,7 +331,7 @@ const styles = StyleSheet.create({
   },
   scanAgainButton: {
     position: "absolute",
-    bottom: 30,
+    bottom: 40,
     alignSelf: "center",
     backgroundColor: "#2563eb",
     paddingVertical: 12,
@@ -292,25 +345,36 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     position: "absolute",
-    top: 0,
+    bottom: 40,
     left: 0,
     right: 0,
-    bottom: 0,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.7)",
   },
-  manualEntryButton: {
+  loadingText: {
+    marginTop: 8,
+    color: "#fff",
+    fontSize: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bottomContainer: {
+    padding: 16,
     backgroundColor: "#fff",
-    paddingVertical: 16,
-    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
   },
+  manualEntryButton: {
+    backgroundColor: "#2563eb",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
   manualEntryButtonText: {
-    color: "#2563eb",
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 16,
-    fontWeight: "500",
   },
 });
 

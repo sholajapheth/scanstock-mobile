@@ -1,69 +1,109 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
-  TouchableOpacity,
   TextInput,
+  TouchableOpacity,
+  StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { InventoryContext } from "../../../src/context/InventoryContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useProducts, useSearchProducts } from "../../../src/hooks/useProducts";
+import { router } from "expo-router";
 
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  barcode: string;
-  description: string;
-  quantity: number;
+// Custom hook to debounce search input
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
-const InventoryScreen = () => {
-  const router = useRouter();
-  const { inventory, fetchInventory, isLoading } = useContext(InventoryContext);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [filteredInventory, setFilteredInventory] = useState<Product[]>([]);
+const InventoryScreen = ({}) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const [selectedFilter, setSelectedFilter] = useState("all"); // 'all', 'low', 'out'
 
-  useEffect(() => {
-    // Filter inventory based on search query
-    if (searchQuery.trim() === "") {
-      setFilteredInventory(inventory);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = inventory.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query) ||
-          item.barcode.includes(query)
-      );
-      setFilteredInventory(filtered);
+  // Fetch products
+  const {
+    data: allProducts = [],
+    isLoading: isLoadingProducts,
+    refetch: refetchProducts,
+  } = useProducts();
+  // console.log("allProducts", allProducts);
+
+  // Search products when query changes
+  const { data: searchResults = [], isLoading: isSearching } =
+    useSearchProducts(debouncedSearchQuery);
+
+  // Determine which products to display
+  const getDisplayedProducts = useCallback(() => {
+    // If searching, show search results
+    if (debouncedSearchQuery) {
+      return searchResults;
     }
-  }, [inventory, searchQuery]);
 
+    // Otherwise filter by selected category
+    switch (selectedFilter) {
+      case "low":
+        return allProducts.filter(
+          (product) =>
+            product.quantity > 0 &&
+            product.reorderPoint &&
+            product.quantity <= product.reorderPoint
+        );
+      case "out":
+        return allProducts.filter((product) => product.quantity <= 0);
+      case "all":
+      default:
+        return allProducts;
+    }
+  }, [debouncedSearchQuery, selectedFilter, allProducts, searchResults]);
+
+  const displayedProducts = getDisplayedProducts();
+
+  // Handle refresh
   const handleRefresh = () => {
-    fetchInventory();
+    refetchProducts();
   };
 
-  const renderProductItem = ({ item }: { item: Product }) => (
+  // Render product item
+  const renderProductItem = ({ item }) => (
     <TouchableOpacity
       style={styles.productItem}
-      onPress={() => router.push(`/product-detail/${item.id}`)}
+      onPress={() =>
+        router.navigate({
+          pathname: "/(root)/product-detail",
+          params: { productId: item.id },
+        })
+      }
     >
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productBarcode}>SKU: {item.barcode}</Text>
+        <Text style={styles.productBarcode}>{item.barcode}</Text>
+        {item.sku && <Text style={styles.productSku}>SKU: {item.sku}</Text>}
       </View>
+
       <View style={styles.productMetrics}>
-        <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.productPrice}>${item?.price}</Text>
         <View
           style={[
             styles.quantityBadge,
             item.quantity <= 0
               ? styles.outOfStock
-              : item.quantity < 5
+              : item.reorderPoint && item.quantity <= item.reorderPoint
               ? styles.lowStock
               : styles.inStock,
           ]}
@@ -74,23 +114,28 @@ const InventoryScreen = () => {
     </TouchableOpacity>
   );
 
+  // Render empty state
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      {isLoading ? (
+      {isLoadingProducts || isSearching ? (
         <ActivityIndicator size="large" color="#2563eb" />
       ) : (
         <>
           <Ionicons name="cube-outline" size={64} color="#94a3b8" />
           <Text style={styles.emptyText}>
-            {searchQuery.trim() !== ""
+            {debouncedSearchQuery
               ? "No products match your search"
+              : selectedFilter !== "all"
+              ? `No ${
+                  selectedFilter === "low" ? "low stock" : "out of stock"
+                } products found`
               : "No products in inventory"}
           </Text>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => router.push("/product-detail")}
+            onPress={() => router.navigate("/(root)/product-detail")}
           >
-            <Text style={styles.addButtonText}>Add Your First Product</Text>
+            <Text style={styles.addButtonText}>Add New Product</Text>
           </TouchableOpacity>
         </>
       )}
@@ -98,7 +143,7 @@ const InventoryScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons
@@ -116,26 +161,83 @@ const InventoryScreen = () => {
         />
       </View>
 
-      {/* Inventory List */}
+      {/* Filter Tabs */}
+      <View style={styles.filterTabs}>
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            selectedFilter === "all" && styles.activeFilterTab,
+          ]}
+          onPress={() => setSelectedFilter("all")}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              selectedFilter === "all" && styles.activeFilterTabText,
+            ]}
+          >
+            All
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            selectedFilter === "low" && styles.activeFilterTab,
+          ]}
+          onPress={() => setSelectedFilter("low")}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              selectedFilter === "low" && styles.activeFilterTabText,
+            ]}
+          >
+            Low Stock
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            selectedFilter === "out" && styles.activeFilterTab,
+          ]}
+          onPress={() => setSelectedFilter("out")}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              selectedFilter === "out" && styles.activeFilterTabText,
+            ]}
+          >
+            Out of Stock
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Product List */}
       <FlatList
-        data={filteredInventory}
+        data={displayedProducts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderProductItem}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyList}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />
+          <RefreshControl
+            refreshing={isLoadingProducts && !isSearching}
+            onRefresh={handleRefresh}
+          />
         }
       />
 
       {/* Add Product FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push("/product-detail")}
+        onPress={() => router.navigate("/(root)/product-detail")}
       >
         <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -143,6 +245,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    paddingTop: 30,
   },
   searchContainer: {
     flexDirection: "row",
@@ -162,9 +265,32 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
+  filterTabs: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+    alignItems: "center",
+  },
+  activeFilterTab: {
+    borderBottomColor: "#2563eb",
+  },
+  filterTabText: {
+    color: "#64748b",
+    fontWeight: "500",
+  },
+  activeFilterTabText: {
+    color: "#2563eb",
+  },
   listContent: {
-    padding: 16,
-    paddingBottom: 80, // Add space for FAB
+    paddingHorizontal: 16,
+    paddingBottom: 80, // Space for FAB
+    flexGrow: 1,
   },
   productItem: {
     flexDirection: "row",
@@ -178,7 +304,6 @@ const styles = StyleSheet.create({
   },
   productInfo: {
     flex: 1,
-    marginRight: 10,
   },
   productName: {
     fontSize: 16,
@@ -189,6 +314,11 @@ const styles = StyleSheet.create({
   productBarcode: {
     fontSize: 14,
     color: "#64748b",
+  },
+  productSku: {
+    fontSize: 14,
+    color: "#64748b",
+    marginTop: 2,
   },
   productMetrics: {
     alignItems: "flex-end",
@@ -220,22 +350,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   emptyContainer: {
-    alignItems: "center",
+    flex: 1,
     justifyContent: "center",
-    padding: 24,
+    alignItems: "center",
+    padding: 32,
+    minHeight: 300,
   },
   emptyText: {
+    marginTop: 16,
     fontSize: 16,
     color: "#64748b",
     textAlign: "center",
-    marginVertical: 16,
   },
   addButton: {
+    marginTop: 24,
     backgroundColor: "#2563eb",
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingHorizontal: 24,
     borderRadius: 8,
-    marginTop: 16,
   },
   addButtonText: {
     color: "#fff",
@@ -244,12 +376,12 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 24,
-    right: 24,
-    backgroundColor: "#2563eb",
+    right: 16,
+    bottom: 16,
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: "#2563eb",
     justifyContent: "center",
     alignItems: "center",
     elevation: 4,

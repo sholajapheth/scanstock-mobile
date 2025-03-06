@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { InventoryContext } from "../../../src/context/InventoryContext";
+import { InventoryContext } from "../../src/context/InventoryContext";
 
 interface CartItem {
   id: number;
@@ -83,7 +83,7 @@ const CheckoutScreen: React.FC = () => {
       const result = await checkout({
         customerInfo,
         total: getCartTotal(),
-        date: new Date().toISOString(),
+        // date: new Date().toISOString(),
       });
 
       if (result.success) {
@@ -228,7 +228,7 @@ const CheckoutScreen: React.FC = () => {
                 <tr>
                   <td>${item.name}</td>
                   <td class="qty">${item.quantity}</td>
-                  <td class="price">$${item.price.toFixed(2)}</td>
+                  <td class="price">$${item.price}</td>
                   <td class="subtotal">$${(item.price * item.quantity).toFixed(
                     2
                   )}</td>
@@ -241,7 +241,7 @@ const CheckoutScreen: React.FC = () => {
           
           <div class="summary">
             <div class="total-row">
-              Total: $${total.toFixed(2)}
+              Total: $${total}
             </div>
           </div>
           
@@ -273,7 +273,7 @@ const CheckoutScreen: React.FC = () => {
     <View style={styles.cartItem}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.itemPrice}>${item.price}</Text>
       </View>
 
       <View style={styles.itemActions}>
@@ -295,9 +295,7 @@ const CheckoutScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.itemTotal}>
-          ${(item.price * item.quantity).toFixed(2)}
-        </Text>
+        <Text style={styles.itemTotal}>${item.price * item.quantity}</Text>
 
         <TouchableOpacity
           style={styles.removeButton}
@@ -341,7 +339,7 @@ const CheckoutScreen: React.FC = () => {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total Amount:</Text>
-            <Text style={styles.summaryAmount}>${totalAmount.toFixed(2)}</Text>
+            <Text style={styles.summaryAmount}>${totalAmount}</Text>
           </View>
 
           <View style={styles.actionButtons}>
@@ -433,9 +431,7 @@ const CheckoutScreen: React.FC = () => {
               </View>
               <View style={styles.modalSummaryRow}>
                 <Text style={styles.modalSummaryTotal}>Total:</Text>
-                <Text style={styles.modalSummaryTotal}>
-                  ${totalAmount.toFixed(2)}
-                </Text>
+                <Text style={styles.modalSummaryTotal}>${totalAmount}</Text>
               </View>
             </View>
 
