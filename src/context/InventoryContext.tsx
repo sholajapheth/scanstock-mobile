@@ -10,6 +10,7 @@ import { AuthContext } from "./AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api-client";
 import { Logger } from "../utils/logger";
+import { useUser } from "../hooks/useAuth";
 
 // Define types
 export interface Product {
@@ -34,7 +35,7 @@ export interface CustomerInfo {
 export interface SaleData {
   customerInfo: CustomerInfo;
   total: number;
-  date: string;
+  // date: string;
 }
 
 interface ApiResponse<T = any> {
@@ -63,6 +64,7 @@ interface InventoryContextType {
   clearCart: () => void;
   getCartTotal: () => number;
   checkout: (saleData: SaleData) => Promise<ApiResponse>;
+  fetchProductByBarcode: (barcode: string) => Promise<ApiResponse<Product>>;
 }
 
 interface InventoryProviderProps {
@@ -82,7 +84,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
 }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { userToken } = useContext(AuthContext);
+  const { token: userToken } = useUser();
   const queryClient = useQueryClient();
 
   // Query for fetching inventory
@@ -150,7 +152,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
         })),
         total: getCartTotal(),
         customerInfo: saleData.customerInfo,
-        date: saleData.date,
+        // date: saleData.date,
       };
 
       return api.post("/sales", sale);
@@ -278,6 +280,62 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     await queryClient.invalidateQueries({ queryKey: ["inventory"] });
   };
 
+  const fetchProductByBarcode = async (
+    barcode: string
+  ): Promise<ApiResponse<Product>> => {
+    log.info(`Fetching product by barcode: ${barcode}`);
+
+    try {
+      // First check if we already have this product in our local inventory cache
+      const existingProduct = inventory.find(
+        (item) => item.barcode === barcode
+      );
+      if (existingProduct) {
+        log.info(`Found product in local inventory: ${existingProduct.name}`);
+        return {
+          success: true,
+          data: existingProduct,
+        };
+      }
+
+      // If not found locally, fetch from API
+      const response = await api.get(`/products/barcode/${barcode}`);
+
+      // If successful, update the inventory cache
+      if (response.data) {
+        log.info(`Fetched product from API: ${response.data.name}`);
+
+        // Update local inventory cache
+        queryClient.setQueryData(["inventory"], (oldData: Product[] = []) => {
+          // If product is already in inventory, update it
+          const productIndex = oldData.findIndex((p) => p.barcode === barcode);
+          if (productIndex >= 0) {
+            const updatedInventory = [...oldData];
+            updatedInventory[productIndex] = response.data;
+            return updatedInventory;
+          }
+          // Otherwise add it to inventory
+          return [...oldData, response.data];
+        });
+
+        return response;
+      }
+
+      // If product not found in API
+      log.warn(`Product not found with barcode: ${barcode}`);
+      return {
+        success: false,
+        message: response.message || "Product not found",
+      };
+    } catch (error) {
+      log.error(`Error fetching product by barcode ${barcode}:`, error);
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Error fetching product",
+      };
+    }
+  };
   return (
     <InventoryContext.Provider
       value={{
@@ -297,6 +355,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
         clearCart,
         getCartTotal,
         checkout,
+        fetchProductByBarcode,
       }}
     >
       {children}

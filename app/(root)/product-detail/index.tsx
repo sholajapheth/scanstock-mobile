@@ -1,5 +1,5 @@
 // src/screens/ProductDetailScreen.tsx
-import React from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -8,53 +8,100 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useProductDetail } from "../../../src/hooks/useProductDetail";
+import {
+  useProduct,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from "../../../src/hooks/useProducts";
 import { Logger } from "../../../src/utils/logger";
-
+import type { Product } from "../../../src/hooks/useProducts";
+import { InventoryContext } from "../../../src/context/InventoryContext";
 const log = new Logger("ProductDetailScreen");
 
 const ProductDetailScreen = () => {
-  const { productId, barcode } = useLocalSearchParams();
+  const { productId, barcode: initialBarcode } = useLocalSearchParams();
   const router = useRouter();
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
-  log.debug(
-    `Rendering ProductDetailScreen with productId=${productId}, barcode=${barcode}`
+  const { generateBarcode } = useContext(InventoryContext);
+
+  // Query for fetching product data
+  const { data: existingProduct, isLoading: isLoadingProduct } = useProduct(
+    Number(productId)
   );
 
-  // Use our custom hook for all business logic
-  const {
-    product,
-    isLoading,
-    isNewProduct,
-    deleteConfirmVisible,
-    setDeleteConfirmVisible,
-    updateField,
-    saveProduct,
-    deleteProduct,
-    handleGenerateBarcode,
-  } = useProductDetail({
-    productId: productId as string,
-    initialBarcode: barcode as string,
-    onSaveSuccess: () => router.back(),
+  // Mutations for CRUD operations
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
+
+  // Local state for form data
+  const [formData, setFormData] = useState<Partial<Product>>({
+    name: existingProduct?.name || "",
+    price: existingProduct?.price || 0,
+    quantity: existingProduct?.quantity || 0,
+    description: existingProduct?.description || "",
+    barcode: existingProduct?.barcode || initialBarcode || "",
   });
 
-  // Event handlers
+  const isNewProduct = !productId;
+  const isLoading =
+    isLoadingProduct ||
+    createProduct.isPending ||
+    updateProduct.isPending ||
+    deleteProduct.isPending;
+
+  // Update form field
+  const updateField = (field: keyof Product, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Generate unique barcode
+  const handleGenerateBarcode = () => {
+    const newBarcode = generateBarcode();
+    updateField("barcode", newBarcode);
+  };
+
+  // Save product
   const handleSave = async () => {
     log.info("Save button pressed");
-    const success = await saveProduct();
-    if (success) {
+    try {
+      if (isNewProduct) {
+        await createProduct.mutateAsync(formData);
+        Alert.alert("Success", "Product created successfully");
+      } else {
+        await updateProduct.mutateAsync({
+          id: productId as string,
+          data: formData,
+        });
+        Alert.alert("Success", "Product updated successfully");
+      }
       router.back();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save product"
+      );
     }
   };
 
+  // Handle product deletion
   const handleDelete = async () => {
     log.info("Delete button pressed");
-    const success = await deleteProduct();
-    if (success) {
+    try {
+      await deleteProduct.mutateAsync(productId as string);
+      Alert.alert("Success", "Product deleted successfully");
       router.back();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to delete product"
+      );
     }
   };
 
@@ -94,7 +141,7 @@ const ProductDetailScreen = () => {
           <Text style={styles.label}>Product Name</Text>
           <TextInput
             style={styles.input}
-            value={product.name}
+            value={formData.name}
             onChangeText={(text) => updateField("name", text)}
             placeholder="Enter product name"
           />
@@ -105,11 +152,8 @@ const ProductDetailScreen = () => {
           <Text style={styles.label}>Price</Text>
           <TextInput
             style={styles.input}
-            value={product.price.toString()}
-            onChangeText={(text) => {
-              const price = parseFloat(text) || 0;
-              updateField("price", price);
-            }}
+            value={formData.price?.toString()}
+            onChangeText={(text) => updateField("price", parseFloat(text) || 0)}
             keyboardType="decimal-pad"
             placeholder="0.00"
           />
@@ -120,11 +164,10 @@ const ProductDetailScreen = () => {
           <Text style={styles.label}>Quantity</Text>
           <TextInput
             style={styles.input}
-            value={product.quantity.toString()}
-            onChangeText={(text) => {
-              const quantity = parseInt(text) || 0;
-              updateField("quantity", quantity);
-            }}
+            value={formData.quantity?.toString()}
+            onChangeText={(text) =>
+              updateField("quantity", parseInt(text) || 0)
+            }
             keyboardType="number-pad"
             placeholder="0"
           />
@@ -137,7 +180,7 @@ const ProductDetailScreen = () => {
             <View style={styles.barcodeContainer}>
               <TextInput
                 style={[styles.input, styles.barcodeInput]}
-                value={product.barcode}
+                value={formData.barcode}
                 onChangeText={(text) => updateField("barcode", text)}
                 placeholder="Enter barcode"
                 editable={isNewProduct}
@@ -157,7 +200,7 @@ const ProductDetailScreen = () => {
           <Text style={styles.label}>Description (Optional)</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            value={product.description}
+            value={formData.description}
             onChangeText={(text) => updateField("description", text)}
             placeholder="Enter product description"
             multiline
@@ -177,7 +220,7 @@ const ProductDetailScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Delete Button (only for existing products) */}
+        {/* Delete Button */}
         {!isNewProduct && (
           <TouchableOpacity
             style={[styles.button, styles.deleteButton]}
@@ -290,5 +333,4 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 });
-
 export default ProductDetailScreen;

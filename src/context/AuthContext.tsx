@@ -21,6 +21,7 @@ interface AuthContextType {
     userData: RegisterData
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
+  isAuthenticated: boolean;
 }
 
 interface RegisterData {
@@ -90,6 +91,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.setItem("userToken", access_token);
       axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
+      console.log("user", user);
+      console.log("access_token", access_token);
+
       setUserToken(access_token);
       setUser(user);
 
@@ -151,6 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         login,
         register,
         logout,
+        isAuthenticated: !!userToken && !!user,
       }}
     >
       {children}

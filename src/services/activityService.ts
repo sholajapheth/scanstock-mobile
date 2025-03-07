@@ -44,6 +44,22 @@ class ActivityService {
     return api.get(`/activities/product/${productId}?limit=${limit}`);
   }
 
+  async getSaleActivity(
+    saleId: number,
+    limit: number = 10
+  ): Promise<ApiResponse<ActivityItem[]>> {
+    log.info(`Fetching activity for sale ${saleId} (limit: ${limit})`);
+    return api.get(`/activities/sale/${saleId}?limit=${limit}`);
+  }
+
+  async getActivitiesByType(
+    type: string,
+    limit: number = 10
+  ): Promise<ApiResponse<ActivityItem[]>> {
+    log.info(`Fetching activities by type ${type} (limit: ${limit})`);
+    return api.get(`/activities/type/${type}?limit=${limit}`);
+  }
+
   // Mock function to generate sample activity data for testing
   getMockRecentActivity(limit: number = 10): ActivityItem[] {
     const activities: ActivityItem[] = [
@@ -163,6 +179,36 @@ class ActivityService {
     return activities.slice(0, limit);
   }
 }
+
+export const logReceiptActivity = async (
+  type: "receipt_generated" | "receipt_downloaded",
+  receiptId: string,
+  description: string,
+  metadata?: Record<string, any>
+) => {
+  try {
+    // You would normally call your API here
+    // For now, we'll just log to console
+    console.log("Receipt activity logged:", {
+      type,
+      receiptId,
+      description,
+      metadata,
+    });
+
+    // Return a mock success response
+    return {
+      success: true,
+      message: "Activity logged successfully",
+    };
+  } catch (error) {
+    console.error("Error logging receipt activity:", error);
+    return {
+      success: false,
+      message: "Failed to log activity",
+    };
+  }
+};
 
 export const activityService = new ActivityService();
 export default activityService;

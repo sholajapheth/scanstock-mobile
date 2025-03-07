@@ -18,19 +18,17 @@ import {
   useToggleFavorite,
 } from "../../../src/hooks/useProducts";
 import { useCategories } from "../../../src/hooks/useCategories";
+import { router, useLocalSearchParams } from "expo-router";
 
-const ProductDetailScreen = ({
-  route,
-  navigation,
-}: {
-  route: any;
-  navigation: any;
-}) => {
-  const { productId, barcode } = route.params || {};
-  const isNewProduct = !productId;
+const ProductDetailScreen = () => {
+  const { productId, barcode, id } = useLocalSearchParams();
+
+  const isNewProduct = !id;
 
   // API hooks
-  const { data: product, isLoading: isLoadingProduct } = useProduct(productId);
+  const { data: product, isLoading: isLoadingProduct } = useProduct(
+    id ? parseInt(id as string) : 0
+  );
   const { data: categories } = useCategories();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -127,13 +125,13 @@ const ProductDetailScreen = ({
         // Create new product
         await createProduct.mutateAsync(productData);
         Alert.alert("Success", "Product created successfully", [
-          { text: "OK", onPress: () => navigation.goBack() },
+          { text: "OK", onPress: () => router.back() },
         ]);
       } else {
         // Update existing product
         await updateProduct.mutateAsync({ id: productId, data: productData });
         Alert.alert("Success", "Product updated successfully", [
-          { text: "OK", onPress: () => navigation.goBack() },
+          { text: "OK", onPress: () => router.back() },
         ]);
       }
     } catch (error: any) {
@@ -146,9 +144,9 @@ const ProductDetailScreen = ({
 
   const handleDelete = async () => {
     try {
-      await deleteProduct.mutateAsync(productId);
+      await deleteProduct.mutateAsync(id ? parseInt(id as string) : 0);
       Alert.alert("Success", "Product deleted successfully", [
-        { text: "OK", onPress: () => navigation.goBack() },
+        { text: "OK", onPress: () => router.back() },
       ]);
     } catch (error: any) {
       Alert.alert(
@@ -164,7 +162,7 @@ const ProductDetailScreen = ({
     if (!productId) return;
 
     try {
-      await toggleFavorite.mutateAsync(productId);
+      await toggleFavorite.mutateAsync(id ? parseInt(id as string) : 0);
     } catch (error: any) {
       Alert.alert(
         "Error",

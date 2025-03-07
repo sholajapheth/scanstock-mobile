@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useProducts, useSearchProducts } from "../../../src/hooks/useProducts";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 // Custom hook to debounce search input
 export function useDebounce<T>(value: T, delay: number): T {
@@ -32,9 +32,10 @@ export function useDebounce<T>(value: T, delay: number): T {
 }
 
 const InventoryScreen = ({}) => {
+  const { filter } = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
-  const [selectedFilter, setSelectedFilter] = useState("all"); // 'all', 'low', 'out'
+  const [selectedFilter, setSelectedFilter] = useState(filter || "all"); // 'all', 'low', 'out'
 
   // Fetch products
   const {
@@ -61,8 +62,8 @@ const InventoryScreen = ({}) => {
         return allProducts.filter(
           (product) =>
             product.quantity > 0 &&
-            product.reorderPoint &&
-            product.quantity <= product.reorderPoint
+            (product.reorderPoint || 2) &&
+            product.quantity <= (product.reorderPoint || 2)
         );
       case "out":
         return allProducts.filter((product) => product.quantity <= 0);
@@ -85,7 +86,7 @@ const InventoryScreen = ({}) => {
       style={styles.productItem}
       onPress={() =>
         router.navigate({
-          pathname: "/(root)/product-detail",
+          pathname: `/(root)/product-detail/${item.id}`,
           params: { productId: item.id },
         })
       }

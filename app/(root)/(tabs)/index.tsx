@@ -4,15 +4,16 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   SafeAreaView,
+  Alert,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../../../src/context/AuthContext";
 import { InventoryContext } from "../../../src/context/InventoryContext";
 import { useRouter } from "expo-router";
 import { DashboardActivity } from "@/src/components/dashboard/DashboardActivity";
+import { useLogout, useUser } from "@/src/hooks/useAuth";
 
 interface DashboardStats {
   totalProducts: number;
@@ -23,7 +24,11 @@ interface DashboardStats {
 
 const DashboardScreen = () => {
   const router = useRouter();
-  const { user, logout } = useContext(AuthContext);
+  const { user, isAuthenticated, isLoading: isUserLoading } = useUser();
+  const { mutate: logoutUser } = useLogout(
+    () => router.push("/(auth)/login"),
+    () => Alert.alert("Logout Failed", "Please try again")
+  );
   const { inventory, cart, isLoading, fetchInventory } =
     useContext(InventoryContext);
   const [stats, setStats] = useState<DashboardStats>({
@@ -111,90 +116,137 @@ const DashboardScreen = () => {
     );
   }
 
+  const renderDashboardContent = () => {
+    return [
+      // Welcome Section
+      <View key="welcome" style={styles.headerSection}>
+        <View>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userName}>{user?.name || "User"}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => logoutUser()}
+        >
+          <Ionicons name="log-out-outline" size={22} color="#64748b" />
+        </TouchableOpacity>
+      </View>,
+
+      // Quick Actions
+      <View key="quickActions" style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsContainer}>
+          <QuickAction
+            icon="barcode-outline"
+            label="Scan"
+            onPress={() => router.push("/(root)/(tabs)/scanner")}
+          />
+          <QuickAction
+            icon="add-circle-outline"
+            label="Add Product"
+            onPress={() => router.push("/(root)/product-detail")}
+            color="#10b981"
+          />
+          <QuickAction
+            icon="cart-outline"
+            label="Checkout"
+            onPress={() => router.push("/(root)/checkout")}
+            color="#f59e0b"
+          />
+          <QuickAction
+            icon="list-outline"
+            label="Inventory"
+            onPress={() => router.push("/inventory")}
+            color="#8b5cf6"
+          />
+          <QuickAction
+            icon="receipt-outline"
+            label="Sales"
+            onPress={() => router.push("/sales")}
+            color="#8b5cf6"
+          />
+
+          <QuickAction
+            icon="settings-outline"
+            label="Settings & Management"
+            onPress={() => router.push("/management")}
+            color="#2563eb"
+          />
+        </View>
+      </View>,
+
+      // Stats
+      <View key="stats" style={styles.section}>
+        <Text style={styles.sectionTitle}>Inventory Stats</Text>
+        <View style={styles.statsContainer}>
+          <StatCard
+            icon="cube-outline"
+            label="Total Products"
+            value={stats.totalProducts}
+            color="#2563eb"
+            onPress={() => router.push("/inventory")}
+          />
+          <StatCard
+            icon="alert-circle-outline"
+            label="Low Stock"
+            value={stats.lowStock}
+            color="#f59e0b"
+            onPress={() =>
+              router.push({
+                pathname: "/(root)/(tabs)/inventory",
+                params: {
+                  filter: "low",
+                },
+              })
+            }
+          />
+        </View>
+        <View style={styles.statsContainer}>
+          <StatCard
+            icon="close-circle-outline"
+            label="Out of Stock"
+            value={stats.outOfStock}
+            color="#ef4444"
+            onPress={() =>
+              router.push({
+                pathname: "/(root)/(tabs)/inventory",
+                params: {
+                  filter: "out",
+                },
+              })
+            }
+          />
+          <StatCard
+            icon="cart-outline"
+            label="Cart Items"
+            value={stats.cartItems}
+            color="#10b981"
+            onPress={() => router.push("/checkout")}
+          />
+        </View>
+      </View>,
+
+      // Recent Activity
+      <View
+        key="activity"
+        style={{
+          paddingHorizontal: 10,
+        }}
+      >
+        <DashboardActivity limit={5} />
+      </View>,
+    ];
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
-        {/* Welcome Section */}
-        <View style={styles.headerSection}>
-          <View>
-            <Text style={styles.welcomeText}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.name || "User"}</Text>
-          </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={22} color="#64748b" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsContainer}>
-            <QuickAction
-              icon="barcode-outline"
-              label="Scan"
-              onPress={() => router.push("/(root)/(tabs)/scanner")}
-            />
-            <QuickAction
-              icon="add-circle-outline"
-              label="Add Product"
-              onPress={() => router.push("/(root)/product-detail")}
-              color="#10b981"
-            />
-            <QuickAction
-              icon="cart-outline"
-              label="Checkout"
-              onPress={() => router.push("/(root)/checkout")}
-              color="#f59e0b"
-            />
-            <QuickAction
-              icon="list-outline"
-              label="Inventory"
-              onPress={() => router.push("/inventory")}
-              color="#8b5cf6"
-            />
-          </View>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Inventory Stats</Text>
-          <View style={styles.statsContainer}>
-            <StatCard
-              icon="cube-outline"
-              label="Total Products"
-              value={stats.totalProducts}
-              color="#2563eb"
-              onPress={() => router.push("/inventory")}
-            />
-            <StatCard
-              icon="alert-circle-outline"
-              label="Low Stock"
-              value={stats.lowStock}
-              color="#f59e0b"
-              onPress={() => router.push("/inventory")}
-            />
-          </View>
-          <View style={styles.statsContainer}>
-            <StatCard
-              icon="close-circle-outline"
-              label="Out of Stock"
-              value={stats.outOfStock}
-              color="#ef4444"
-              onPress={() => router.push("/inventory")}
-            />
-            <StatCard
-              icon="cart-outline"
-              label="Cart Items"
-              value={stats.cartItems}
-              color="#10b981"
-              onPress={() => router.push("/checkout")}
-            />
-          </View>
-        </View>
-
-        {/* Recent Activity (placeholder) */}
-        <DashboardActivity limit={5} />
-      </ScrollView>
+      <FlatList
+        data={renderDashboardContent()}
+        ListFooterComponent={() => <View style={{ height: 100 }} />}
+        renderItem={({ item }) => item}
+        keyExtractor={(_, index) => index.toString()}
+        style={styles.container}
+      />
     </SafeAreaView>
   );
 };

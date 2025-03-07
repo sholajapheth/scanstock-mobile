@@ -16,7 +16,7 @@ export function useActivities(options: UseActivitiesOptions = {}) {
   const {
     limit = 10,
     productId,
-    useMockData = true, // Default to mock data until API is ready
+    useMockData = false, // Changed to false to use real API
     enabled = true,
   } = options;
 
@@ -46,18 +46,28 @@ export function useActivities(options: UseActivitiesOptions = {}) {
       }
 
       // Use real API data
-      let result;
-      if (productId) {
-        result = await activityService.getProductActivity(productId, limit);
-      } else {
-        result = await activityService.getRecentActivity(limit);
-      }
+      try {
+        let result;
+        if (productId) {
+          result = await activityService.getProductActivity(productId, limit);
+        } else {
+          result = await activityService.getRecentActivity(limit);
+        }
 
-      if (!result.success) {
-        throw new Error(result.message || "Failed to fetch activities");
-      }
+        if (!result.data) {
+          throw new Error(result.message || "Failed to fetch activities");
+        }
 
-      return result.data || [];
+        return result.data || [];
+      } catch (err) {
+        log.error("Failed to fetch activities:", err);
+        // Fall back to mock data on error if needed
+        if (process.env.NODE_ENV !== "production") {
+          log.info("Falling back to mock data");
+          return activityService.getMockRecentActivity(limit);
+        }
+        throw err;
+      }
     },
     enabled,
     staleTime: 60000, // 1 minute

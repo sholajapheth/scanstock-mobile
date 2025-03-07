@@ -72,6 +72,10 @@ const updateProduct = async ({
     price: data.price,
     description: data.description,
     quantity: data.quantity,
+    categoryId: data.categoryId,
+    sku: data.sku,
+    reorderPoint: data.reorderPoint,
+    costPrice: data.costPrice,
   };
   const response = await apiClient.patch(`/products/${id}`, apiData);
   console.log(apiData);

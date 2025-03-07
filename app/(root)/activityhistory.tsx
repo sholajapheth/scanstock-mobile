@@ -10,6 +10,7 @@ import {
   RefreshControl,
   SafeAreaView,
   StatusBar,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -17,6 +18,7 @@ import { useActivities } from "@/src/hooks/useActivities";
 import { ActivityItem } from "@/src/services/activityService";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Updated ACTIVITY_FILTERS array for ActivityHistoryScreen
 const ACTIVITY_FILTERS = [
   { key: "all", label: "All" },
   { key: "sales", label: "Sales", types: ["sale"] },
@@ -25,6 +27,12 @@ const ACTIVITY_FILTERS = [
     key: "products",
     label: "Products",
     types: ["product_added", "product_updated"],
+  },
+  // Add a new filter for receipts
+  {
+    key: "receipts",
+    label: "Receipts",
+    types: ["receipt_generated", "receipt_downloaded"],
   },
 ];
 
@@ -58,7 +66,7 @@ const ActivityHistoryScreen = () => {
   const { activities, isLoading, error, refresh, getRelativeTime } =
     useActivities({
       limit: 50, // Show more on this screen
-      useMockData: true,
+      useMockData: false,
     });
 
   const getActivityIcon = (type: ActivityItem["type"]) => {
@@ -80,14 +88,33 @@ const ActivityHistoryScreen = () => {
     }
   };
 
+  // Updated handleItemPress function for ActivityHistoryScreen
   const handleItemPress = (item: ActivityItem) => {
     if (item.entityType === "product") {
+      // Navigate to product detail
       router.push(`/product-detail/${item.entityId}`);
     } else if (item.entityType === "sale") {
-      router.push(`/sales/${item.entityId}`);
+      // Since the sales detail screen doesn't exist yet, we'll show a message
+      // and provide a link to the receipts screen as a helpful alternative
+      Alert.alert(
+        "Sales Detail",
+        "Sale details are not available yet. Would you like to view your saved receipts instead?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "View Receipts",
+            onPress: () => router.push("/receipts"),
+          },
+        ]
+      );
+    } else if (item.entityType === "receipt") {
+      // Directly navigate to receipts screen for receipt activities
+      router.push("/receipts");
     }
   };
-
   const filterActivities = (activities: ActivityItem[]) => {
     if (activeFilter === "all") {
       return activities;

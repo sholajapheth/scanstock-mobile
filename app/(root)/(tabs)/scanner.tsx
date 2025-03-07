@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -17,19 +17,30 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useProductByBarcode } from "../../../src/hooks/useProducts";
 import { useCart } from "../../../src/hooks/useCart";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { InventoryContext } from "../../../src/context/InventoryContext";
+import { Logger } from "../../../src/utils/logger";
+
+const log = new Logger("Scanner");
 
 const ScannerScreen = () => {
+  const { checkout } = useLocalSearchParams();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
-  const [scanMode, setScanMode] = useState("inventory"); // 'inventory' or 'checkout'
+  const [scanMode, setScanMode] = useState(checkout ? "checkout" : "inventory"); // 'inventory' or 'checkout'
   const [barcode, setBarcode] = useState<string | null>(null);
+  const [manuallyChecking, setManuallyChecking] = useState(false);
 
+  // Get inventory context for direct operations
+  const inventoryContext = useContext(InventoryContext);
+
+  // Use the hook for API operations
   const {
-    data: scannedProduct,
+    data: product,
     isLoading: isLoadingProduct,
     error: productError,
   } = useProductByBarcode(barcode);
+
   const { addToCart } = useCart();
 
   // Request camera permission
@@ -40,19 +51,54 @@ const ScannerScreen = () => {
     })();
   }, []);
 
+  // Manually check inventory when barcode is scanned
+  const checkInventory = async () => {
+    if (!barcode) return null;
+    if (!inventoryContext) return null;
+
+    setManuallyChecking(true);
+
+    try {
+      // First check local inventory
+      let product = inventoryContext.findProductByBarcode(barcode);
+
+      // If not found locally and we have a fetchProductByBarcode function, try it
+      if (!product && inventoryContext.fetchProductByBarcode) {
+        try {
+          log.info(`Attempting to fetch product with barcode: ${barcode}`);
+          const response = await inventoryContext.fetchProductByBarcode(
+            barcode
+          );
+          if (response.success && response.data) {
+            product = response.data;
+          }
+        } catch (error) {
+          log.error(`Error fetching product by barcode: ${barcode}`, error);
+        }
+      }
+
+      return product;
+    } catch (error) {
+      log.error(`Error checking inventory for barcode: ${barcode}`, error);
+      return null;
+    } finally {
+      setManuallyChecking(false);
+    }
+  };
+
   // Handle product found or not found
   useEffect(() => {
     if (!barcode || !scanned) return;
 
     if (scanMode === "inventory") {
-      if (scannedProduct) {
+      if (product) {
         // Product exists, navigate to product detail
         router.navigate({
           pathname: "/(root)/product-detail",
-          params: { productId: scannedProduct.id },
+          params: { productId: product.id },
         });
         setBarcode(null);
-      } else if (productError) {
+      } else if (productError || !isLoadingProduct) {
         // Product doesn't exist, navigate to create new product
         Alert.alert(
           "Product Not Found",
@@ -79,13 +125,34 @@ const ScannerScreen = () => {
           ]
         );
       }
-    } else if (scanMode === "checkout" && scannedProduct) {
-      // Add to cart
-      if (scannedProduct.quantity > 0) {
-        addToCart(scannedProduct);
+    } else if (scanMode === "checkout") {
+      if (product) {
+        if (product.quantity > 0) {
+          addToCart(product);
+          Alert.alert("Added to Cart", `${product.name} - $${product.price}`, [
+            {
+              text: "OK",
+              onPress: () => {
+                setScanned(false);
+                setBarcode(null);
+              },
+            },
+          ]);
+        } else {
+          Alert.alert("Out of Stock", `${product.name} is out of stock!`, [
+            {
+              text: "OK",
+              onPress: () => {
+                setScanned(false);
+                setBarcode(null);
+              },
+            },
+          ]);
+        }
+      } else if (productError || !isLoadingProduct) {
         Alert.alert(
-          "Added to Cart",
-          `${scannedProduct.name} - $${scannedProduct.price}`,
+          "Product Not Found",
+          "This product is not in your inventory.",
           [
             {
               text: "OK",
@@ -94,24 +161,25 @@ const ScannerScreen = () => {
                 setBarcode(null);
               },
             },
+            {
+              text: "Add Product",
+              onPress: () => {
+                router.navigate({
+                  pathname: "/(root)/product-detail",
+                  params: { barcode },
+                });
+                setBarcode(null);
+              },
+            },
           ]
         );
-      } else {
-        Alert.alert("Out of Stock", `${scannedProduct.name} is out of stock!`, [
-          {
-            text: "OK",
-            onPress: () => {
-              setScanned(false);
-              setBarcode(null);
-            },
-          },
-        ]);
       }
     }
-  }, [scannedProduct, productError, barcode, scanMode]);
+  }, [product, productError, barcode, scanMode, isLoadingProduct]);
 
   const handleBarCodeScanned = ({ type, data }: BarcodeScanningResult) => {
     if (scanned) return;
+    log.info(`Scanned barcode: ${data} (type: ${type})`);
     setScanned(true);
     setBarcode(data);
   };
@@ -223,7 +291,7 @@ const ScannerScreen = () => {
           <View style={styles.scanArea} />
         </View>
 
-        {scanned && !isLoadingProduct && (
+        {scanned && !isLoadingProduct && !manuallyChecking && (
           <TouchableOpacity
             style={styles.scanAgainButton}
             onPress={() => {
@@ -235,7 +303,7 @@ const ScannerScreen = () => {
           </TouchableOpacity>
         )}
 
-        {isLoadingProduct && (
+        {(isLoadingProduct || manuallyChecking) && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Checking product...</Text>

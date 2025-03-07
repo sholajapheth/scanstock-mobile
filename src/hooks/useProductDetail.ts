@@ -33,10 +33,10 @@ export function useProductDetail({
       if (!productId) return;
 
       setIsLoading(true);
-      const result = await productService.fetchById(Number(productId));
+      const result = await productService.getById(Number(productId));
       setIsLoading(false);
 
-      if (result.success && result.data) {
+      if (result.data) {
         setProduct(result.data);
       } else {
         Alert.alert("Error", result.message || "Failed to load product");

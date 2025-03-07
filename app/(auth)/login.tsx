@@ -18,7 +18,11 @@ const LoginScreen = () => {
   const [email, setEmail] = useState("user@example.com");
   const [password, setPassword] = useState("password123");
 
-  const loginMutation = useLogin();
+  const { mutate: login, isPending: isLoginPending } = useLogin(
+    () => router.push("/(root)/(tabs)"),
+    () =>
+      Alert.alert("Login Failed", "Please check your credentials and try again")
+  );
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,18 +37,7 @@ const LoginScreen = () => {
       return;
     }
 
-    try {
-      await loginMutation.mutateAsync({ email, password });
-      // Navigation will be handled by the app's root navigator
-      // based on the presence of userToken
-    } catch (error: any) {
-      // Handle error from mutation
-      Alert.alert(
-        "Login Failed",
-        error.response?.data?.message ||
-          "Please check your credentials and try again"
-      );
-    }
+    login({ email, password });
   };
 
   return (
@@ -82,9 +75,9 @@ const LoginScreen = () => {
           <TouchableOpacity
             style={styles.loginButton}
             onPress={handleLogin}
-            disabled={loginMutation.isPending}
+            disabled={isLoginPending}
           >
-            {loginMutation.isPending ? (
+            {isLoginPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.loginButtonText}>Login</Text>

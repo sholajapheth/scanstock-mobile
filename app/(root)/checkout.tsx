@@ -1,3 +1,4 @@
+/// src/screens/CheckoutScreen.tsx
 import React, { useContext, useState } from "react";
 import {
   View,
@@ -9,11 +10,16 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import { InventoryContext } from "../../src/context/InventoryContext";
+import { router } from "expo-router";
+import generateReceiptHTML from "../../src/components/receipt/ReceiptGenerator";
+import ReceiptActionModal from "../../src/components/modals/ReceiptActionModal";
 
 interface CartItem {
   id: number;
@@ -41,6 +47,10 @@ const CheckoutScreen: React.FC = () => {
 
   const [checkoutModalVisible, setCheckoutModalVisible] =
     useState<boolean>(false);
+  const [receiptActionsVisible, setReceiptActionsVisible] =
+    useState<boolean>(false);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [processingReceipt, setProcessingReceipt] = useState<boolean>(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: "",
     email: "",
@@ -83,189 +93,167 @@ const CheckoutScreen: React.FC = () => {
       const result = await checkout({
         customerInfo,
         total: getCartTotal(),
-        // date: new Date().toISOString(),
       });
 
-      if (result.success) {
+      if (result.data) {
         setCheckoutModalVisible(false);
 
-        // Generate and share receipt
+        // Generate receipt but show options instead of immediately sharing
         await generateReceipt();
 
-        Alert.alert(
-          "Checkout Complete",
-          "Sale has been processed successfully!",
-          [{ text: "OK" }]
-        );
+        setReceiptActionsVisible(true);
       } else {
         Alert.alert("Error", result.message || "Checkout failed");
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
+      Alert.alert("Error", error?.data?.message || "Checkout failed");
     }
   };
 
-  const generateReceiptHTML = () => {
-    const total = getCartTotal();
-    const date = new Date().toLocaleString();
-
-    return `
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-          <style>
-            body { 
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-              padding: 20px;
-              max-width: 400px;
-              margin: 0 auto;
-              color: #1e293b;
-            }
-            .header { 
-              text-align: center;
-              margin-bottom: 20px;
-              padding-bottom: 15px;
-              border-bottom: 1px dashed #cbd5e1;
-            }
-            .title {
-              font-size: 24px;
-              font-weight: bold;
-              margin: 10px 0;
-            }
-            .date {
-              color: #64748b;
-              font-size: 14px;
-            }
-            .customer {
-              margin: 15px 0;
-              font-size: 14px;
-            }
-            .items {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            .items th {
-              text-align: left;
-              color: #64748b;
-              font-weight: normal;
-              font-size: 14px;
-              padding: 8px 4px;
-              border-bottom: 1px solid #cbd5e1;
-            }
-            .items td {
-              padding: 12px 4px;
-              border-bottom: 1px solid #f1f5f9;
-              font-size: 14px;
-            }
-            .qty {
-              text-align: center;
-            }
-            .price {
-              text-align: right;
-            }
-            .subtotal {
-              text-align: right;
-            }
-            .summary {
-              margin-top: 20px;
-              text-align: right;
-            }
-            .total-row {
-              font-size: 18px;
-              font-weight: bold;
-            }
-            .footer {
-              margin-top: 30px;
-              text-align: center;
-              font-size: 14px;
-              color: #64748b;
-              padding-top: 15px;
-              border-top: 1px dashed #cbd5e1;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">ScanStock Pro</div>
-            <div class="date">${date}</div>
-          </div>
-          
-          ${
-            customerInfo.name
-              ? `
-          <div class="customer">
-            <div>Customer: ${customerInfo.name}</div>
-            ${
-              customerInfo.email
-                ? `<div>Email: ${customerInfo.email}</div>`
-                : ""
-            }
-            ${
-              customerInfo.phone
-                ? `<div>Phone: ${customerInfo.phone}</div>`
-                : ""
-            }
-          </div>
-          `
-              : ""
-          }
-          
-          <table class="items">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th class="qty">Qty</th>
-                <th class="price">Price</th>
-                <th class="subtotal">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${cart
-                .map(
-                  (item) => `
-                <tr>
-                  <td>${item.name}</td>
-                  <td class="qty">${item.quantity}</td>
-                  <td class="price">$${item.price}</td>
-                  <td class="subtotal">$${(item.price * item.quantity).toFixed(
-                    2
-                  )}</td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          </table>
-          
-          <div class="summary">
-            <div class="total-row">
-              Total: $${total}
-            </div>
-          </div>
-          
-          <div class="footer">
-            Thank you for your purchase!
-          </div>
-        </body>
-      </html>
-    `;
-  };
-
+  // Generate the receipt and store the file URL
   const generateReceipt = async () => {
     try {
-      const html = generateReceiptHTML();
-      const { uri } = await Print.printToFileAsync({ html });
+      setProcessingReceipt(true);
 
-      await Sharing.shareAsync(uri, {
+      const html = generateReceiptHTML({
+        cart,
+        customerInfo,
+        total: getCartTotal(),
+      });
+
+      const { uri } = await Print.printToFileAsync({ html });
+      setReceiptUrl(uri);
+
+      return uri;
+    } catch (error) {
+      console.error("Error generating receipt", error);
+      Alert.alert("Error", "Failed to generate receipt");
+      return null;
+    } finally {
+      setProcessingReceipt(false);
+    }
+  };
+
+  // Handle download receipt to device
+  const handleDownloadReceipt = async () => {
+    try {
+      if (!receiptUrl) {
+        const newUri = await generateReceipt();
+        if (!newUri) return;
+      }
+
+      // Define a filename with timestamp
+      const timestamp = new Date().getTime();
+      const fileName = `receipt_${timestamp}.pdf`;
+
+      // Check platform
+      if (Platform.OS === "android") {
+        try {
+          // Try to save to Android Downloads folder first
+          const permissions =
+            await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
+              FileSystem.StorageAccessFramework.getUriForDirectoryInRoot(
+                "Download"
+              )
+            );
+
+          if (permissions.granted) {
+            // User granted permission to save to Downloads
+            const destinationUri =
+              await FileSystem.StorageAccessFramework.createFileAsync(
+                permissions.directoryUri,
+                fileName,
+                "application/pdf"
+              );
+
+            // Copy the file content
+            const fileContent = await FileSystem.readAsStringAsync(
+              receiptUrl!,
+              {
+                encoding: FileSystem.EncodingType.Base64,
+              }
+            );
+
+            await FileSystem.writeAsStringAsync(destinationUri, fileContent, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            Alert.alert(
+              "Download Complete",
+              "Receipt has been saved to your Downloads folder.",
+              [{ text: "OK" }]
+            );
+
+            console.log("Receipt saved to Downloads:", fileName);
+          } else {
+            // Fallback to the app's documents directory
+            await saveToAppDirectory();
+          }
+        } catch (error) {
+          console.error("Error saving to Downloads:", error);
+          // Fallback to the app's documents directory
+          await saveToAppDirectory();
+        }
+      } else {
+        // iOS - Save to app's documents directory
+        await saveToAppDirectory();
+      }
+
+      setReceiptActionsVisible(false);
+      clearCart();
+    } catch (error) {
+      console.error("Download error:", error);
+      Alert.alert("Error", "Failed to download receipt");
+    }
+  };
+
+  // Helper function to save to app's documents directory
+  const saveToAppDirectory = async () => {
+    const timestamp = new Date().getTime();
+    const fileName = `receipt_${timestamp}.pdf`;
+    const downloadPath = FileSystem.documentDirectory + fileName;
+
+    // Copy the file to the documents directory
+    await FileSystem.copyAsync({
+      from: receiptUrl!,
+      to: downloadPath,
+    });
+
+    Alert.alert(
+      "Download Complete",
+      "Receipt has been saved. You can view it in the 'My Receipts' section.",
+      [
+        {
+          text: "View Receipts",
+          onPress: () => router.push("/management/receipts"),
+        },
+        { text: "OK" },
+      ]
+    );
+
+    console.log("Receipt saved to app directory:", downloadPath);
+  };
+
+  // Handle share receipt
+  const handleShareReceipt = async () => {
+    try {
+      if (!receiptUrl) {
+        const newUri = await generateReceipt();
+        if (!newUri) return;
+      }
+
+      await Sharing.shareAsync(receiptUrl!, {
         mimeType: "application/pdf",
         dialogTitle: "Share Receipt",
         UTI: "com.adobe.pdf",
       });
+
+      setReceiptActionsVisible(false);
+      clearCart();
     } catch (error) {
-      console.error("Error generating receipt", error);
-      Alert.alert("Error", "Failed to generate receipt");
+      console.error("Sharing error:", error);
+      Alert.alert("Error", "Failed to share receipt");
     }
   };
 
@@ -311,7 +299,17 @@ const CheckoutScreen: React.FC = () => {
     <View style={styles.emptyContainer}>
       <Ionicons name="cart-outline" size={64} color="#94a3b8" />
       <Text style={styles.emptyText}>Your cart is empty</Text>
-      <TouchableOpacity style={styles.scanButton} onPress={() => {}}>
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={() => {
+          router.push({
+            pathname: "/(root)/(tabs)/scanner",
+            params: {
+              checkout: "true",
+            },
+          });
+        }}
+      >
         <Text style={styles.scanButtonText}>Scan Products</Text>
       </TouchableOpacity>
     </View>
@@ -449,6 +447,18 @@ const CheckoutScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Receipt Actions Modal */}
+      <ReceiptActionModal
+        visible={receiptActionsVisible}
+        onClose={() => {
+          setReceiptActionsVisible(false);
+          clearCart(); // Clear cart if user closes without downloading/sharing
+        }}
+        onDownload={handleDownloadReceipt}
+        onShare={handleShareReceipt}
+        isLoading={processingReceipt}
+      />
     </View>
   );
 };
@@ -456,7 +466,7 @@ const CheckoutScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
   },
   listContent: {
     padding: 16,
@@ -469,6 +479,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   itemInfo: {
     flexDirection: "row",
@@ -518,6 +533,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+    marginTop: 60,
   },
   emptyText: {
     fontSize: 16,

@@ -32,21 +32,27 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
       useMockData: false, // Use mock data until API is ready
     });
 
+  // Updated getActivityIcon function
   const getActivityIcon = (type: ActivityItem["type"]) => {
     switch (type) {
       case "sale":
-        return <Ionicons name="cart" size={20} color="#16a34a" />;
+        return <Ionicons name="cart" size={24} color="#16a34a" />;
       case "stock_increase":
-        return <Ionicons name="arrow-up" size={20} color="#2563eb" />;
+        return <Ionicons name="arrow-up" size={24} color="#2563eb" />;
       case "stock_decrease":
-        return <Ionicons name="arrow-down" size={20} color="#dc2626" />;
+        return <Ionicons name="arrow-down" size={24} color="#dc2626" />;
       case "product_added":
-        return <Ionicons name="add-circle" size={20} color="#9333ea" />;
+        return <Ionicons name="add-circle" size={24} color="#9333ea" />;
       case "product_updated":
-        return <Ionicons name="pencil" size={20} color="#f59e0b" />;
+        return <Ionicons name="pencil" size={24} color="#f59e0b" />;
+      // Add icons for receipt activities
+      case "receipt_generated":
+        return <Ionicons name="receipt" size={24} color="#0ea5e9" />; // Light blue
+      case "receipt_downloaded":
+        return <Ionicons name="download" size={24} color="#8b5cf6" />; // Purple
       default:
         return (
-          <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
+          <Ionicons name="ellipsis-horizontal" size={24} color="#6b7280" />
         );
     }
   };

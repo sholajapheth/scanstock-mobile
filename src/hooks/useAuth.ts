@@ -44,7 +44,7 @@ const fetchUserProfile = async () => {
 };
 
 // Custom hooks
-export function useLogin() {
+export function useLogin(onSuccess?: () => void, onError?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -58,6 +58,10 @@ export function useLogin() {
 
       // Invalidate and refetch user profile
       queryClient.invalidateQueries({ queryKey: ["user"] });
+      onSuccess?.();
+    },
+    onError: (error) => {
+      onError?.();
     },
   });
 }
@@ -68,7 +72,7 @@ export function useRegister() {
   });
 }
 
-export function useLogout() {
+export function useLogout(onSuccess?: () => void, onError?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -82,6 +86,10 @@ export function useLogout() {
 
       // Reset all queries
       queryClient.resetQueries();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      onError?.();
     },
   });
 }
