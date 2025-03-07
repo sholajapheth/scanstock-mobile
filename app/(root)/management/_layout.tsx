@@ -16,7 +16,7 @@ export default function ManagementLayout() {
         }}
       />
       <Stack.Screen
-        name="receipts/index"
+        name="receipts"
         options={{
           headerShown: false,
         }}

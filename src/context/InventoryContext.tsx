@@ -112,6 +112,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
     },
   });
 
@@ -128,6 +129,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
     },
   });
 
@@ -138,19 +140,22 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
     },
   });
 
   // Mutation for checkout
   const checkoutMutation = useMutation({
     mutationFn: async (saleData: SaleData) => {
+      console.log("saleData", saleData);
+      console.log("cart", cart);
       const sale = {
         items: cart.map((item) => ({
           productId: Number(item.id),
           quantity: Number(item.quantity),
           price: Number(item.price),
         })),
-        total: getCartTotal(),
+        total: saleData.total,
         customerInfo: saleData.customerInfo,
         // date: saleData.date,
       };
@@ -160,6 +165,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     onSuccess: () => {
       clearCart();
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
     },
   });
 
@@ -271,6 +277,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   };
 
   const checkout = async (saleData: SaleData) => {
+    log.info("saleData", saleData);
     log.info("Processing checkout with items:", cart.length);
     return checkoutMutation.mutateAsync(saleData);
   };

@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
@@ -467,6 +468,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+    paddingTop: StatusBar.currentHeight,
   },
   listContent: {
     padding: 16,

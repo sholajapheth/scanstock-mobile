@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useProducts, useSearchProducts } from "../../../src/hooks/useProducts";
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    paddingTop: 30,
+    paddingTop: StatusBar.currentHeight,
   },
   searchContainer: {
     flexDirection: "row",

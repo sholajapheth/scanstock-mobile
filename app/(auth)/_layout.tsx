@@ -1,14 +1,11 @@
 import { Stack, Redirect } from "expo-router";
-import { useContext } from "react";
-import { AuthContext } from "@/src/context/AuthContext";
 import { View, Text, ActivityIndicator } from "react-native";
 import { useUser } from "@/src/hooks/useAuth";
 
 export default function AuthLayout() {
-  const { userToken, isLoading } = useContext(AuthContext);
-  const { isAuthenticated, isLoading: isUserLoading, user } = useUser();
+  const { isAuthenticated, isLoading } = useUser();
 
-  if (isUserLoading) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#2563eb" />
@@ -17,8 +14,9 @@ export default function AuthLayout() {
     );
   }
 
+  // If already authenticated, redirect to main app
   if (isAuthenticated) {
-    return <Redirect href="/" />;
+    return <Redirect href="/(root)/(tabs)" />;
   }
 
   return (

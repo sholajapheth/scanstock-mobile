@@ -97,12 +97,26 @@ export function useLogout(onSuccess?: () => void, onError?: () => void) {
 export function useUser() {
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data: user, isLoading: isLoadingUser } = useQuery({
+  const {
+    data: user,
+    isLoading: isLoadingUser,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["user"],
     queryFn: fetchUserProfile,
     enabled: !!token, // Only run if we have a token
     retry: false, // Don't retry if it fails
+    onError: async (err) => {
+      // If we get an authentication error, clear the token
+      if (err?.response?.status === 401) {
+        console.log("Authentication failed, clearing token");
+        await AsyncStorage.removeItem("userToken");
+        setToken(null);
+      }
+    },
   });
 
   useEffect(() => {
@@ -119,10 +133,11 @@ export function useUser() {
 
     getToken();
   }, []);
+
   return {
     user,
     token,
-    isAuthenticated: !!token && !!user,
+    isAuthenticated: !!token && !!user && !isError,
     isLoading: isLoading || (!!token && isLoadingUser),
   };
 }

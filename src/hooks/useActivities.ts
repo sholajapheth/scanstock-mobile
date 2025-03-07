@@ -64,7 +64,7 @@ export function useActivities(options: UseActivitiesOptions = {}) {
         // Fall back to mock data on error if needed
         if (process.env.NODE_ENV !== "production") {
           log.info("Falling back to mock data");
-          return activityService.getMockRecentActivity(limit);
+          // return activityService.getMockRecentActivity(limit);
         }
         throw err;
       }

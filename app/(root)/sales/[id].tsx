@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    paddingTop: 30,
+    paddingTop: StatusBar.currentHeight,
   },
   centerContainer: {
     flex: 1,

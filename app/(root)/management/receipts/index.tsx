@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    paddingTop: 35,
+    paddingTop: StatusBar.currentHeight,
   },
   header: {
     flexDirection: "row",

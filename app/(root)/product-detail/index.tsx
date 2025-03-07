@@ -25,6 +25,7 @@ const log = new Logger("ProductDetailScreen");
 
 const ProductDetailScreen = () => {
   const { productId, barcode: initialBarcode } = useLocalSearchParams();
+  console.log("initialBarcode", initialBarcode);
   const router = useRouter();
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 

@@ -103,6 +103,22 @@ apiClient.interceptors.response.use(
   }
 );
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Handle 401 errors (token expired)
+    if (error.response?.status === 401) {
+      // Clear the token from storage
+      await AsyncStorage.removeItem("userToken");
+
+      // Your app should handle redirection based on auth state
+      // No need to navigate here as the layouts will handle it
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // Helper methods for API calls with consistent error handling
 export const api = {
   async get(url: string, config = {}) {

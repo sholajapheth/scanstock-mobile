@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert,
   FlatList,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { InventoryContext } from "../../../src/context/InventoryContext";
@@ -240,6 +241,7 @@ const DashboardScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <FlatList
         data={renderDashboardContent()}
         ListFooterComponent={() => <View style={{ height: 100 }} />}
@@ -255,7 +257,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    paddingTop: 30,
+    paddingTop: StatusBar.currentHeight,
   },
   loadingContainer: {
     flex: 1,

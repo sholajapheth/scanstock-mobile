@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   SafeAreaView,
+  StatusBar,
 } from "react-native";
 import {
   Camera,
@@ -93,10 +94,7 @@ const ScannerScreen = () => {
     if (scanMode === "inventory") {
       if (product) {
         // Product exists, navigate to product detail
-        router.navigate({
-          pathname: "/(root)/product-detail",
-          params: { productId: product.id },
-        });
+        router.navigate(`/(root)/product-detail/${product.id}`);
         setBarcode(null);
       } else if (productError || !isLoadingProduct) {
         // Product doesn't exist, navigate to create new product
@@ -340,7 +338,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    paddingTop: 30,
+    paddingTop: StatusBar.currentHeight,
   },
   modeToggleContainer: {
     flexDirection: "row",
