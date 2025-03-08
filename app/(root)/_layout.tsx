@@ -54,12 +54,12 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
-        {/* <Stack.Screen
-          name="scan"
+        <Stack.Screen
+          name="sales"
           options={{
             headerShown: false,
           }}
-        /> */}
+        />
         {/* <Stack.Screen
           name="add-product"
           options={{
@@ -80,6 +80,12 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="management"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="profile"
           options={{
             headerShown: false,
           }}

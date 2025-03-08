@@ -21,6 +21,12 @@ export default function ManagementLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="business"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

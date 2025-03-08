@@ -11,6 +11,10 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { QueryProvider } from "@/src/providers/QueryProvider";
+import {
+  checkForOTAUpdate,
+  checkForRequiredUpdate,
+} from "@/src/utils/versionManager";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +27,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
+      // Check for native app updates first (version in app store)
+      checkForRequiredUpdate();
+
+      // Then check for OTA updates (for minor fixes that don't require store approval)
+      checkForOTAUpdate();
       SplashScreen.hideAsync();
     }
   }, [loaded]);

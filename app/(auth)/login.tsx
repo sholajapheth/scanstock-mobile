@@ -20,8 +20,11 @@ const LoginScreen = () => {
 
   const { mutate: login, isPending: isLoginPending } = useLogin(
     () => router.push("/(root)/(tabs)"),
-    () =>
-      Alert.alert("Login Failed", "Please check your credentials and try again")
+    (error) =>
+      Alert.alert(
+        "Login Failed",
+        error.message || "Please check your credentials and try again"
+      )
   );
 
   const handleLogin = async () => {

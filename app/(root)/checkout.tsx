@@ -21,6 +21,7 @@ import { InventoryContext } from "../../src/context/InventoryContext";
 import { router } from "expo-router";
 import generateReceiptHTML from "../../src/components/receipt/ReceiptGenerator";
 import ReceiptActionModal from "../../src/components/modals/ReceiptActionModal";
+import { useBusiness } from "@/src/hooks/useBusiness";
 
 interface CartItem {
   id: number;
@@ -45,6 +46,8 @@ const CheckoutScreen: React.FC = () => {
     checkout,
     isLoading,
   } = useContext(InventoryContext);
+
+  const { data: businessProfile } = useBusiness();
 
   const [checkoutModalVisible, setCheckoutModalVisible] =
     useState<boolean>(false);
@@ -121,6 +124,7 @@ const CheckoutScreen: React.FC = () => {
         cart,
         customerInfo,
         total: getCartTotal(),
+        businessInfo: businessProfile || null,
       });
 
       const { uri } = await Print.printToFileAsync({ html });

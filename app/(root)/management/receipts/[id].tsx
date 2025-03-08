@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Share,
   Alert,
+  StatusBar,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +65,8 @@ export default function ReceiptScreen() {
     enabled: !!id,
   });
 
+  console.log("order", order);
+
   // Generate receipt HTML when order data is loaded
   useEffect(() => {
     if (order) {
@@ -71,7 +74,7 @@ export default function ReceiptScreen() {
       const cartItems = order.items.map((item) => ({
         id: item.productId,
         name: item.productName,
-        price: item.unitPrice,
+        price: item.price,
         quantity: item.quantity,
       }));
 
@@ -261,6 +264,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+    paddingTop: StatusBar.currentHeight,
   },
   centerContainer: {
     flex: 1,

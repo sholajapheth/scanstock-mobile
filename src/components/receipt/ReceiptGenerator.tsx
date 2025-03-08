@@ -1,6 +1,7 @@
 // src/components/receipt/ReceiptGenerator.tsx
 import React from "react";
 import { CartItem } from "../../hooks/useCart";
+import { BusinessData } from "../../hooks/useBusiness";
 
 interface CustomerInfo {
   name: string;
@@ -12,17 +13,18 @@ interface ReceiptGeneratorProps {
   cart: CartItem[];
   customerInfo: CustomerInfo;
   total: number;
-  businessName?: string;
+  businessInfo?: BusinessData;
 }
 
 export const generateReceiptHTML = ({
   cart,
   customerInfo,
   total,
-  businessName = "ScanStock Pro",
+  businessInfo,
 }: ReceiptGeneratorProps): string => {
   const date = new Date().toLocaleString();
   const receiptNumber = `R-${Date.now().toString().slice(-6)}`;
+  const businessName = businessInfo?.name || "ScanStock Pro";
 
   return `
     <!DOCTYPE html>
@@ -76,6 +78,17 @@ export const generateReceiptHTML = ({
           
           .receipt-body {
             padding: 20px;
+          }
+          
+          .business-info {
+            text-align: center;
+            margin-bottom: 15px;
+          }
+          
+          .business-info p {
+            margin: 3px 0;
+            font-size: 14px;
+            color: #334155;
           }
           
           .customer-info {
@@ -203,6 +216,40 @@ export const generateReceiptHTML = ({
         <div class="receipt">
           <div class="receipt-header">
             <div class="company-name">${businessName}</div>
+            ${
+              businessInfo
+                ? `
+              <div class="business-info">
+                ${businessInfo.address ? `<p>${businessInfo.address}</p>` : ""}
+                ${
+                  businessInfo.city && businessInfo.state
+                    ? `<p>${businessInfo.city}, ${businessInfo.state} ${
+                        businessInfo.postalCode || ""
+                      }</p>`
+                    : businessInfo.city
+                    ? `<p>${businessInfo.city}</p>`
+                    : ""
+                }
+                ${businessInfo.country ? `<p>${businessInfo.country}</p>` : ""}
+                ${
+                  businessInfo.phoneNumber
+                    ? `<p>Phone: ${businessInfo.phoneNumber}</p>`
+                    : ""
+                }
+                ${
+                  businessInfo.website
+                    ? `<p>Website: ${businessInfo.website}</p>`
+                    : ""
+                }
+                ${
+                  businessInfo.taxId
+                    ? `<p>Tax ID: ${businessInfo.taxId}</p>`
+                    : ""
+                }
+              </div>
+            `
+                : ""
+            }
             <div class="receipt-details">
               <span>Receipt #${receiptNumber}</span>
               <span>${date}</span>
@@ -251,7 +298,9 @@ export const generateReceiptHTML = ({
                     <td>${item.name}</td>
                     <td class="qty-col">${item.quantity}</td>
                     <td class="price-col">$${item.price}</td>
-                    <td class="total-col">$${item.price * item.quantity}</td>
+                    <td class="total-col">$${(
+                      item.price * item.quantity
+                    ).toFixed(2)}</td>
                   </tr>
                 `
                   )
@@ -262,7 +311,9 @@ export const generateReceiptHTML = ({
             <div class="receipt-summary">
               <div class="summary-row">
                 <div class="summary-label">Subtotal:</div>
-                <div class="summary-value">$${total}</div>
+                <div class="summary-value">$${
+                  typeof total === "number" ? total.toFixed(2) : total
+                }</div>
               </div>
               <div class="summary-row">
                 <div class="summary-label">Tax:</div>
@@ -270,7 +321,9 @@ export const generateReceiptHTML = ({
               </div>
               <div class="summary-row total-row">
                 <div class="summary-label total-label">Total:</div>
-                <div class="summary-value total-value">$${total}</div>
+                <div class="summary-value total-value">$${
+                  typeof total === "number" ? total.toFixed(2) : total
+                }</div>
               </div>
             </div>
           </div>

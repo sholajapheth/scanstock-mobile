@@ -1,5 +1,5 @@
 // app/sales/index.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -47,12 +47,31 @@ const fetchSales = async (params = {}) => {
 
 export default function SalesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week, month
   const [statusFilter, setStatusFilter] = useState("all"); // all, completed, pending, cancelled
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce search query
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Define query parameters
   const queryParams = {
-    search: searchQuery,
+    search: debouncedSearchQuery,
     dateFilter,
     status: statusFilter !== "all" ? statusFilter : undefined,
   };
@@ -69,19 +88,19 @@ export default function SalesScreen() {
   });
   console.log("sales", JSON.stringify(sales, null, 2));
 
-  const handleSalePress = (sale) => {
+  const handleSalePress = (sale: any) => {
     router.push(`/sales/${sale.id}`);
   };
 
-  const handleSearch = (text) => {
+  const handleSearch = (text: string) => {
     setSearchQuery(text);
   };
 
-  const handleFilterByDate = (filter) => {
+  const handleFilterByDate = (filter: string) => {
     setDateFilter(filter);
   };
 
-  const handleFilterByStatus = (status) => {
+  const handleFilterByStatus = (status: string) => {
     setStatusFilter(status);
   };
 
@@ -89,7 +108,7 @@ export default function SalesScreen() {
     router.push("/checkout");
   };
 
-  const renderSaleItem = ({ item }) => (
+  const renderSaleItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.saleCard}
       onPress={() => handleSalePress(item)}
@@ -179,7 +198,7 @@ export default function SalesScreen() {
           <Ionicons name="search" size={20} color="#94a3b8" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by order no. or customer"
+            placeholder="Search by order no., customer, date or status"
             placeholderTextColor="#94a3b8"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -298,7 +317,7 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("completed")}
           >
-            <View style={styles.statusDot} backgroundColor="#10b981" />
+            <View style={[styles.statusDot, { backgroundColor: "#10b981" }]} />
             <Text
               style={[
                 styles.filterChipText,
@@ -316,7 +335,7 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("pending")}
           >
-            <View style={styles.statusDot} backgroundColor="#f59e0b" />
+            <View style={[styles.statusDot, { backgroundColor: "#f59e0b" }]} />
             <Text
               style={[
                 styles.filterChipText,
@@ -334,7 +353,7 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("cancelled")}
           >
-            <View style={styles.statusDot} backgroundColor="#ef4444" />
+            <View style={[styles.statusDot, { backgroundColor: "#ef4444" }]} />
             <Text
               style={[
                 styles.filterChipText,
@@ -385,7 +404,7 @@ export default function SalesScreen() {
 }
 
 // Helper function to get status badge style based on status
-const getStatusStyle = (status) => {
+const getStatusStyle = (status: string) => {
   switch (status.toLowerCase()) {
     case "completed":
       return { backgroundColor: "#10b981" }; // Green

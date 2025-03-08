@@ -6,7 +6,8 @@ import apiClient, { unAuthApi } from "../lib/api-client";
 // Types
 export interface User {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   businessName?: string;
 }
@@ -44,7 +45,10 @@ const fetchUserProfile = async () => {
 };
 
 // Custom hooks
-export function useLogin(onSuccess?: () => void, onError?: () => void) {
+export function useLogin(
+  onSuccess?: () => void,
+  onError?: (error: any) => void
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -61,7 +65,7 @@ export function useLogin(onSuccess?: () => void, onError?: () => void) {
       onSuccess?.();
     },
     onError: (error) => {
-      onError?.();
+      onError?.(error);
     },
   });
 }

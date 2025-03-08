@@ -1,7 +1,13 @@
-// src/hooks/useProductDetail.ts
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
-import { Product, productService } from "../services/productService";
+import { Product, CreateProductData } from "./useProducts";
+
+import { productService } from "../services/productService";
+import { useUser } from "./useAuth";
+import {
+  deleteSupabaseFile,
+  pickAndUploadImage,
+} from "../utils/supabase-storage-utils";
 
 interface UseProductDetailProps {
   productId?: string | number | null;
@@ -14,14 +20,17 @@ export function useProductDetail({
   initialBarcode,
   onSaveSuccess,
 }: UseProductDetailProps) {
+  const { user } = useUser();
   const [product, setProduct] = useState<Product>({
     name: "",
     price: 0,
     barcode: initialBarcode || "",
     description: "",
     quantity: 0,
+    imageUrl: "",
   });
 
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] =
     useState<boolean>(false);
@@ -38,6 +47,7 @@ export function useProductDetail({
 
       if (result.data) {
         setProduct(result.data);
+        setOriginalImageUrl(result.data.imageUrl || null);
       } else {
         Alert.alert("Error", result.message || "Failed to load product");
       }
@@ -46,24 +56,59 @@ export function useProductDetail({
     loadProduct();
   }, [productId]);
 
-  // Generate barcode for new products if none provided
-  useEffect(() => {
-    if (isNewProduct && !initialBarcode) {
-      handleGenerateBarcode();
-    }
-  }, [isNewProduct, initialBarcode]);
+  // Generate a unique barcode for new products
+  const generateBarcode = () => {
+    const timestamp = new Date().getTime().toString().slice(-10);
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, "0");
+    const newBarcode = `${timestamp}${random}`;
 
-  const handleGenerateBarcode = () => {
-    const newBarcode = productService.generateBarcode();
     setProduct((prev) => ({ ...prev, barcode: newBarcode }));
     return newBarcode;
   };
 
-  const updateField = (field: keyof Product, value: any) => {
-    setProduct((prev) => ({ ...prev, [field]: value }));
+  // Pick and upload an image
+  const handleImageUpload = async () => {
+    try {
+      // If there's an existing image, delete it first
+      if (originalImageUrl) {
+        await deleteSupabaseFile(originalImageUrl);
+      }
+
+      // Pick and upload new image
+      const uploadedUrl = await pickAndUploadImage({
+        fileType: "product",
+        userId: user?.id,
+      });
+
+      if (uploadedUrl) {
+        setProduct((prev) => ({ ...prev, imageUrl: uploadedUrl }));
+      }
+    } catch (error) {
+      console.error("Image upload error:", error);
+      Alert.alert("Error", "Failed to upload image");
+    }
   };
 
-  const validateProduct = (): boolean => {
+  // Remove the current image
+  const handleRemoveImage = async () => {
+    try {
+      // If there's an existing image, delete it
+      if (originalImageUrl) {
+        await deleteSupabaseFile(originalImageUrl);
+      }
+
+      // Clear image URL in product state
+      setProduct((prev) => ({ ...prev, imageUrl: "" }));
+    } catch (error) {
+      console.error("Remove image error:", error);
+      Alert.alert("Error", "Failed to remove image");
+    }
+  };
+
+  const saveProduct = async (): Promise<boolean> => {
+    // Form validation
     if (!product.name.trim()) {
       Alert.alert("Error", "Product name is required");
       return false;
@@ -79,21 +124,19 @@ export function useProductDetail({
       return false;
     }
 
-    return true;
-  };
-
-  const saveProduct = async (): Promise<boolean> => {
-    if (!validateProduct()) return false;
-
     setIsLoading(true);
 
     try {
       let result;
+      const productData: CreateProductData = {
+        ...product,
+        imageUrl: product.imageUrl || undefined,
+      };
 
       if (isNewProduct) {
-        result = await productService.create(product);
+        result = await productService.create(productData);
       } else {
-        result = await productService.update(Number(productId), product);
+        result = await productService.update(Number(productId), productData);
       }
 
       if (result.success) {
@@ -104,8 +147,8 @@ export function useProductDetail({
         return false;
       }
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred");
       console.error("Save product error:", error);
+      Alert.alert("Error", "An unexpected error occurred");
       return false;
     } finally {
       setIsLoading(false);
@@ -118,6 +161,11 @@ export function useProductDetail({
     setIsLoading(true);
 
     try {
+      // Delete product image if it exists
+      if (originalImageUrl) {
+        await deleteSupabaseFile(originalImageUrl);
+      }
+
       const result = await productService.delete(Number(productId));
 
       if (result.success) {
@@ -129,8 +177,8 @@ export function useProductDetail({
         return false;
       }
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred");
       console.error("Delete product error:", error);
+      Alert.alert("Error", "An unexpected error occurred");
       return false;
     } finally {
       setIsLoading(false);
@@ -139,13 +187,15 @@ export function useProductDetail({
 
   return {
     product,
+    setProduct,
     isLoading,
     isNewProduct,
     deleteConfirmVisible,
     setDeleteConfirmVisible,
-    updateField,
     saveProduct,
     deleteProduct,
-    handleGenerateBarcode,
+    generateBarcode,
+    handleImageUpload,
+    handleRemoveImage,
   };
 }

@@ -9,6 +9,7 @@ import {
   Alert,
   FlatList,
   StatusBar,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { InventoryContext } from "../../../src/context/InventoryContext";
@@ -121,15 +122,29 @@ const DashboardScreen = () => {
     return [
       // Welcome Section
       <View key="welcome" style={styles.headerSection}>
-        <View>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name || "User"}</Text>
-        </View>
         <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => logoutUser()}
+          style={styles.userInfoContainer}
+          onPress={() => router.push("/(root)/profile")}
         >
-          <Ionicons name="log-out-outline" size={22} color="#64748b" />
+          <View>
+            <Text style={styles.welcomeText}>Welcome back,</Text>
+            <Text style={styles.userName}>
+              {user?.firstName || "User"} {user?.lastName || ""}
+            </Text>
+          </View>
+          {user?.profilePicture ? (
+            <Image
+              source={{ uri: user.profilePicture }}
+              style={styles.userAvatar}
+            />
+          ) : (
+            <View style={styles.userInitials}>
+              <Text style={styles.initialsText}>
+                {user?.firstName?.charAt(0) || "U"}
+                {user?.lastName?.charAt(0) || ""}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>,
 
@@ -367,6 +382,30 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#94a3b8",
     padding: 20,
+  },
+  userInfoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flex: 1,
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  userInitials: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  initialsText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
 
