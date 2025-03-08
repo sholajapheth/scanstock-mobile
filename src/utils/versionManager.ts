@@ -2,6 +2,7 @@ import * as Updates from "expo-updates";
 import { Alert, Linking, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import apiClient from "../lib/api-client";
 
 // Define version related constants
 const APP_VERSION = Constants.expoConfig?.version || "1.0.0";
@@ -29,10 +30,10 @@ interface UpdateConfig {
 export const checkForRequiredUpdate = async (): Promise<void> => {
   try {
     // Fetch the update configuration from your server
-    const response = await fetch(
+    const response = await apiClient.get(
       `${process.env.EXPO_PUBLIC_API_URL}/app-updates/latest`
     );
-    const updateConfig: UpdateConfig = await response.json();
+    const updateConfig: UpdateConfig = response.data;
 
     // Compare versions
     const needsUpdate =

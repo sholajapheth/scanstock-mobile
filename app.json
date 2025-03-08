@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ScanStock",
-    "slug": "ScanStock",
+    "slug": "scan-stock",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -34,6 +34,7 @@
     },
     "plugins": [
       "expo-router",
+      "@logrocket/react-native",
       [
         "expo-splash-screen",
         {
