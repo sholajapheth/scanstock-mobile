@@ -15,7 +15,6 @@ import {
   checkForOTAUpdate,
   checkForRequiredUpdate,
 } from "@/src/utils/versionManager";
-import LogRocket from "@logrocket/react-native";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -25,8 +24,6 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
-
-  LogRocket.init(process.env.EXPO_PUBLIC_LOGROCKET_KEY || "");
 
   useEffect(() => {
     if (loaded) {

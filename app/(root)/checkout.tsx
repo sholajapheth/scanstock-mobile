@@ -6,12 +6,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
   Modal,
   TextInput,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
@@ -22,6 +21,7 @@ import { router } from "expo-router";
 import generateReceiptHTML from "../../src/components/receipt/ReceiptGenerator";
 import ReceiptActionModal from "../../src/components/modals/ReceiptActionModal";
 import { useBusiness } from "@/src/hooks/useBusiness";
+import ScannerModal from "@/components/scanner/ScannerModal";
 
 interface CartItem {
   id: number;
@@ -61,15 +61,42 @@ const CheckoutScreen: React.FC = () => {
     phone: "",
   });
 
+  // Confirmation modal state
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState({
+    title: "",
+    message: "",
+    status: "warning",
+    actions: [],
+  });
+
+  const showConfirmModal = (config) => {
+    setConfirmModalConfig(config);
+    setConfirmModalVisible(true);
+  };
+
   const handleRemoveItem = (productId: number) => {
-    Alert.alert("Remove Item", "Are you sure you want to remove this item?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => removeFromCart(productId),
-      },
-    ]);
+    showConfirmModal({
+      title: "Remove Item",
+      message: "Are you sure you want to remove this item?",
+      status: "warning",
+      actions: [
+        {
+          text: "Cancel",
+          primary: false,
+          onPress: () => setConfirmModalVisible(false),
+        },
+        {
+          text: "Remove",
+          primary: true,
+          destructive: true,
+          onPress: () => {
+            removeFromCart(productId);
+            setConfirmModalVisible(false);
+          },
+        },
+      ],
+    });
   };
 
   const handleQuantityChange = (
@@ -85,7 +112,18 @@ const CheckoutScreen: React.FC = () => {
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
-      Alert.alert("Error", "Your cart is empty");
+      showConfirmModal({
+        title: "Empty Cart",
+        message: "Your cart is empty. Please add items before checkout.",
+        status: "error",
+        actions: [
+          {
+            text: "OK",
+            primary: true,
+            onPress: () => setConfirmModalVisible(false),
+          },
+        ],
+      });
       return;
     }
 
@@ -107,11 +145,36 @@ const CheckoutScreen: React.FC = () => {
 
         setReceiptActionsVisible(true);
       } else {
-        Alert.alert("Error", result.message || "Checkout failed");
+        showConfirmModal({
+          title: "Checkout Failed",
+          message:
+            result.message || "Failed to complete checkout. Please try again.",
+          status: "error",
+          actions: [
+            {
+              text: "OK",
+              primary: true,
+              onPress: () => setConfirmModalVisible(false),
+            },
+          ],
+        });
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      Alert.alert("Error", error?.data?.message || "Checkout failed");
+      showConfirmModal({
+        title: "Checkout Error",
+        message:
+          error?.data?.message ||
+          "An unexpected error occurred during checkout.",
+        status: "error",
+        actions: [
+          {
+            text: "OK",
+            primary: true,
+            onPress: () => setConfirmModalVisible(false),
+          },
+        ],
+      });
     }
   };
 
@@ -133,7 +196,18 @@ const CheckoutScreen: React.FC = () => {
       return uri;
     } catch (error) {
       console.error("Error generating receipt", error);
-      Alert.alert("Error", "Failed to generate receipt");
+      showConfirmModal({
+        title: "Receipt Error",
+        message: "Failed to generate receipt. Please try again.",
+        status: "error",
+        actions: [
+          {
+            text: "OK",
+            primary: true,
+            onPress: () => setConfirmModalVisible(false),
+          },
+        ],
+      });
       return null;
     } finally {
       setProcessingReceipt(false);
@@ -184,11 +258,22 @@ const CheckoutScreen: React.FC = () => {
               encoding: FileSystem.EncodingType.Base64,
             });
 
-            Alert.alert(
-              "Download Complete",
-              "Receipt has been saved to your Downloads folder.",
-              [{ text: "OK" }]
-            );
+            showConfirmModal({
+              title: "Download Complete",
+              message: "Receipt has been saved to your Downloads folder.",
+              status: "success",
+              actions: [
+                {
+                  text: "OK",
+                  primary: true,
+                  onPress: () => {
+                    setConfirmModalVisible(false);
+                    setReceiptActionsVisible(false);
+                    clearCart();
+                  },
+                },
+              ],
+            });
 
             console.log("Receipt saved to Downloads:", fileName);
           } else {
@@ -204,12 +289,20 @@ const CheckoutScreen: React.FC = () => {
         // iOS - Save to app's documents directory
         await saveToAppDirectory();
       }
-
-      setReceiptActionsVisible(false);
-      clearCart();
     } catch (error) {
       console.error("Download error:", error);
-      Alert.alert("Error", "Failed to download receipt");
+      showConfirmModal({
+        title: "Download Failed",
+        message: "Failed to download receipt. Please try again.",
+        status: "error",
+        actions: [
+          {
+            text: "OK",
+            primary: true,
+            onPress: () => setConfirmModalVisible(false),
+          },
+        ],
+      });
     }
   };
 
@@ -225,17 +318,33 @@ const CheckoutScreen: React.FC = () => {
       to: downloadPath,
     });
 
-    Alert.alert(
-      "Download Complete",
-      "Receipt has been saved. You can view it in the 'My Receipts' section.",
-      [
+    showConfirmModal({
+      title: "Download Complete",
+      message:
+        "Receipt has been saved. You can view it in the 'My Receipts' section.",
+      status: "success",
+      actions: [
         {
           text: "View Receipts",
-          onPress: () => router.push("/management/receipts"),
+          primary: true,
+          onPress: () => {
+            setConfirmModalVisible(false);
+            setReceiptActionsVisible(false);
+            clearCart();
+            router.push("/management/receipts");
+          },
         },
-        { text: "OK" },
-      ]
-    );
+        {
+          text: "OK",
+          primary: false,
+          onPress: () => {
+            setConfirmModalVisible(false);
+            setReceiptActionsVisible(false);
+            clearCart();
+          },
+        },
+      ],
+    });
 
     console.log("Receipt saved to app directory:", downloadPath);
   };
@@ -258,8 +367,43 @@ const CheckoutScreen: React.FC = () => {
       clearCart();
     } catch (error) {
       console.error("Sharing error:", error);
-      Alert.alert("Error", "Failed to share receipt");
+      showConfirmModal({
+        title: "Sharing Failed",
+        message: "Failed to share receipt. Please try again.",
+        status: "error",
+        actions: [
+          {
+            text: "OK",
+            primary: true,
+            onPress: () => setConfirmModalVisible(false),
+          },
+        ],
+      });
     }
+  };
+
+  const handleClearCart = () => {
+    showConfirmModal({
+      title: "Clear Cart",
+      message: "Are you sure you want to clear all items from your cart?",
+      status: "warning",
+      actions: [
+        {
+          text: "Cancel",
+          primary: false,
+          onPress: () => setConfirmModalVisible(false),
+        },
+        {
+          text: "Clear",
+          primary: true,
+          destructive: true,
+          onPress: () => {
+            clearCart();
+            setConfirmModalVisible(false);
+          },
+        },
+      ],
+    });
   };
 
   const renderCartItem = ({ item }: { item: CartItem }) => (
@@ -348,16 +492,7 @@ const CheckoutScreen: React.FC = () => {
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.actionButton, styles.clearButton]}
-              onPress={() => {
-                Alert.alert(
-                  "Clear Cart",
-                  "Are you sure you want to clear the cart?",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Clear", style: "destructive", onPress: clearCart },
-                  ]
-                );
-              }}
+              onPress={handleClearCart}
             >
               <Text style={styles.clearButtonText}>Clear</Text>
             </TouchableOpacity>
@@ -463,6 +598,19 @@ const CheckoutScreen: React.FC = () => {
         onDownload={handleDownloadReceipt}
         onShare={handleShareReceipt}
         isLoading={processingReceipt}
+      />
+
+      {/* Confirmation Modal - replacing Alert.alert() with our custom modal */}
+      <ScannerModal
+        visible={confirmModalVisible}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        status={confirmModalConfig.status}
+        actions={confirmModalConfig.actions}
+        onClose={() => setConfirmModalVisible(false)}
+        productName={null}
+        productPrice={null}
+        productImage={null}
       />
     </View>
   );

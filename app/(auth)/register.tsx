@@ -17,18 +17,23 @@ import { useRegister } from "@/src/hooks/useAuth";
 import { router } from "expo-router";
 
 const RegisterScreen = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  // Pre-filled values for development purposes
+  const isDev = process.env.NODE_ENV === "development";
+  const [firstName, setFirstName] = useState(isDev ? "John" : "");
+  const [lastName, setLastName] = useState(isDev ? "Doe" : "");
+  const [email, setEmail] = useState(isDev ? "john.doe@example.com" : "");
+  const [password, setPassword] = useState(isDev ? "password123" : "");
+  const [confirmPassword, setConfirmPassword] = useState(
+    isDev ? "password123" : ""
+  );
+  const [businessName, setBusinessName] = useState(isDev ? "Acme Inc" : "");
   const [showPassword, setShowPassword] = useState(false);
 
   const registerMutation = useRegister();
 
   const handleRegister = async () => {
     // Form validation
-    if (!name || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
@@ -52,7 +57,8 @@ const RegisterScreen = () => {
 
     try {
       await registerMutation.mutateAsync({
-        name,
+        firstName,
+        lastName,
         email,
         password,
         businessName: businessName.trim() || undefined,
@@ -90,12 +96,23 @@ const RegisterScreen = () => {
 
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name *</Text>
+              <Text style={styles.label}>First Name *</Text>
               <TextInput
                 style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your name"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="Enter your first name"
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Last Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Enter your last name"
                 autoCapitalize="words"
               />
             </View>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "ScanStock",
     "slug": "scan-stock",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ScanStock",
@@ -24,8 +24,18 @@
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
-      ]
+        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
+      ],
+      "package": "com.sholajapheth.scanstock"
     },
     "web": {
       "bundler": "metro",
@@ -34,7 +44,6 @@
     },
     "plugins": [
       "expo-router",
-      "@logrocket/react-native",
       [
         "expo-splash-screen",
         {
@@ -63,10 +72,25 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5d5ec988-a1bc-4ef4-a5f9-95ce02a1c22c"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5d5ec988-a1bc-4ef4-a5f9-95ce02a1c22c"
     }
   }
 }

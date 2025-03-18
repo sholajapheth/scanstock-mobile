@@ -86,6 +86,7 @@ export function useProductDetail({
         setProduct((prev) => ({ ...prev, imageUrl: uploadedUrl }));
       }
     } catch (error) {
+      JSON.stringify("error ", error);
       console.error("Image upload error:", error);
       Alert.alert("Error", "Failed to upload image");
     }
@@ -139,7 +140,7 @@ export function useProductDetail({
         result = await productService.update(Number(productId), productData);
       }
 
-      if (result.success) {
+      if (result.data && result.data.id) {
         onSaveSuccess?.();
         return true;
       } else {

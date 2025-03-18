@@ -10,13 +10,18 @@ import {
   Platform,
   Alert,
   SafeAreaView,
+  Image,
 } from "react-native";
 import { useLogin } from "../../src/hooks/useAuth";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 const LoginScreen = () => {
-  const [email, setEmail] = useState("user@example.com");
-  const [password, setPassword] = useState("password123");
+  // const [email, setEmail] = useState("");
+  // const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState(__DEV__ ? "user@example.com" : "");
+  const [password, setPassword] = useState(__DEV__ ? "password1234" : "");
 
   const { mutate: login, isPending: isLoginPending } = useLogin(
     () => router.push("/(root)/(tabs)"),
@@ -43,6 +48,10 @@ const LoginScreen = () => {
     login({ email, password });
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -50,6 +59,11 @@ const LoginScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.logoContainer}>
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.logoText}>ScanStock Pro</Text>
           <Text style={styles.tagline}>
             Inventory Management for Small Business
@@ -67,13 +81,25 @@ const LoginScreen = () => {
             autoCorrect={false}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.passwordVisibilityButton}
+              onPress={togglePasswordVisibility}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#64748b"
+              />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={styles.loginButton}
@@ -116,6 +142,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 50,
   },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 10,
+  },
   logoText: {
     fontSize: 32,
     fontWeight: "bold",
@@ -140,6 +171,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    alignItems: "center",
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  passwordVisibilityButton: {
+    padding: 10,
   },
   loginButton: {
     backgroundColor: "#2563eb",

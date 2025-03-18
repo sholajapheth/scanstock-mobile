@@ -30,9 +30,7 @@ interface UpdateConfig {
 export const checkForRequiredUpdate = async (): Promise<void> => {
   try {
     // Fetch the update configuration from your server
-    const response = await apiClient.get(
-      `${process.env.EXPO_PUBLIC_API_URL}/app-updates/latest`
-    );
+    const response = await apiClient.get(`/app-updates/latest`);
     const updateConfig: UpdateConfig = response.data;
 
     // Compare versions

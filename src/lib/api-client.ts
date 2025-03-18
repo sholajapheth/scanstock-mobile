@@ -19,6 +19,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
+      // console.log("config", config);
       const token = await AsyncStorage.getItem("userToken");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -52,6 +53,7 @@ apiClient.interceptors.request.use(
 // Add a response interceptor for error handling and logging
 apiClient.interceptors.response.use(
   (response) => {
+    // console.log("response: ", response);
     apiLogger.debug(
       `Response: ${response.status} from ${response.config.url}`,
       {
