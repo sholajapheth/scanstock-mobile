@@ -12,38 +12,45 @@ import {
   SafeAreaView,
   Image,
 } from "react-native";
-import { useLogin } from "../../src/hooks/useAuth";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-const LoginScreen = () => {
+const ResetPasswordScreen = () => {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState(__DEV__ ? "user@example.com" : "");
-  const [password, setPassword] = useState(__DEV__ ? "password1234" : "");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { mutate: login, isPending: isLoginPending } = useLogin(
-    () => router.push("/(root)/(tabs)"),
-    (error) =>
+  const handleResetPassword = async () => {
+    if (!password || !confirmPassword) {
+      Alert.alert("Error", "Please enter both password fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // TODO: Implement API call to reset password
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated API call
       Alert.alert(
-        "Login Failed",
-        error.message || "Please check your credentials and try again"
-      )
-  );
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password");
-      return;
+        "Success",
+        "Your password has been reset successfully. Please login with your new password.",
+        [{ text: "OK", onPress: () => router.push("/(auth)/login") }]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to reset password. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    // Simple email validation
-    const emailRegex = /\S+@\S+\.\S+/;
-    if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
-      return;
-    }
-
-    login({ email, password });
   };
 
   const togglePasswordVisibility = () => {
@@ -63,30 +70,13 @@ const LoginScreen = () => {
             resizeMode="contain"
           />
           <Text style={styles.logoText}>ScanStock Pro</Text>
-          <Text style={styles.tagline}>
-            Inventory Management for Small Business
-          </Text>
+          <Text style={styles.tagline}>Create New Password</Text>
         </View>
 
         <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color="#00A651"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#6B7280"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <Text style={styles.description}>
+            Please create a new password for your account.
+          </Text>
 
           <View style={styles.inputContainer}>
             <Ionicons
@@ -97,7 +87,7 @@ const LoginScreen = () => {
             />
             <TextInput
               style={styles.passwordInput}
-              placeholder="Password"
+              placeholder="New Password"
               placeholderTextColor="#6B7280"
               value={password}
               onChangeText={setPassword}
@@ -115,39 +105,41 @@ const LoginScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotPasswordButton}
-            onPress={() => router.push("/(auth)/forgot-password")}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-            disabled={isLoginPending}
-          >
-            {isLoginPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.divider} />
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color="#00A651"
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm New Password"
+              placeholderTextColor="#6B7280"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+            />
           </View>
 
           <TouchableOpacity
-            onPress={() => router.navigate("/(auth)/register")}
-            style={styles.registerButton}
+            style={styles.button}
+            onPress={handleResetPassword}
+            disabled={isLoading}
           >
-            <Text style={styles.registerText}>
-              Don't have an account?{" "}
-              <Text style={styles.registerTextBold}>Sign Up</Text>
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Reset Password</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#00A651" />
+            <Text style={styles.backText}>Back to Login</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -180,7 +172,7 @@ const styles = StyleSheet.create({
     color: "#00A651",
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#4B5563",
     marginTop: 8,
   },
@@ -188,6 +180,12 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingHorizontal: 20,
     paddingBottom: 40,
+  },
+  description: {
+    fontSize: 16,
+    color: "#4B5563",
+    textAlign: "center",
+    marginBottom: 20,
   },
   inputContainer: {
     flexDirection: "row",
@@ -201,13 +199,6 @@ const styles = StyleSheet.create({
   inputIcon: {
     marginLeft: 15,
   },
-  input: {
-    flex: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1F2937",
-  },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 15,
@@ -218,52 +209,29 @@ const styles = StyleSheet.create({
   passwordVisibilityButton: {
     padding: 10,
   },
-  forgotPasswordButton: {
-    alignSelf: "flex-end",
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    color: "#00A651",
-    fontSize: 14,
-  },
-  loginButton: {
+  button: {
     backgroundColor: "#00A651",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 10,
   },
-  loginButtonText: {
+  buttonText: {
     color: "#ffffff",
     fontWeight: "bold",
     fontSize: 16,
   },
-  dividerContainer: {
+  backButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
+    justifyContent: "center",
+    marginTop: 20,
   },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E5E7EB",
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    color: "#4B5563",
-    fontSize: 14,
-  },
-  registerButton: {
-    alignItems: "center",
-  },
-  registerText: {
-    color: "#4B5563",
-    fontSize: 14,
-  },
-  registerTextBold: {
-    fontWeight: "bold",
+  backText: {
     color: "#00A651",
+    fontSize: 14,
+    marginLeft: 8,
   },
 });
 
-export default LoginScreen;
+export default ResetPasswordScreen;

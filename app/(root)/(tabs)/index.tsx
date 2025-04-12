@@ -27,11 +27,10 @@ const DashboardScreen = () => {
       // Welcome Section
       <Header user={user} />,
 
-      // Quick Actions
-      <QuickActions />,
-
       // Stats
       <Stats />,
+      // Quick Actions
+      <QuickActions />,
 
       // Recent Activity
       <View

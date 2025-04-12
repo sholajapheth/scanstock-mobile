@@ -16,6 +16,30 @@ export default function ProfileLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="edit"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="subscription"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="help"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="faq"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

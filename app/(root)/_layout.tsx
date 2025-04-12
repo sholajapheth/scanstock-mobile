@@ -35,17 +35,9 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="product-detail/index"
+          name="product-detail"
           options={{
-            title: "Product Details",
-            headerBackTitle: "Back",
-            headerStyle: {
-              backgroundColor: "#fff",
-            },
-            headerTitleStyle: {
-              color: "#000",
-            },
-            headerTintColor: "#000",
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -88,6 +80,13 @@ export default function RootLayout() {
           name="profile"
           options={{
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="search"
+          options={{
+            title: "Search",
+            headerBackTitle: "Back",
           }}
         />
       </Stack>

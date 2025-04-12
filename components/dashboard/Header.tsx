@@ -1,81 +1,185 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-const Header = ({ user }: { user: any }) => {
+interface User {
+  name?: string;
+  company?: string;
+  avatar?: string;
+}
+
+interface HeaderProps {
+  user?: User | null;
+}
+
+const Header = ({ user }: HeaderProps) => {
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
   return (
-    <View key="welcome" style={styles.headerSection}>
-      <TouchableOpacity
-        style={styles.userInfoContainer}
-        onPress={() => router.push("/(root)/profile")}
-      >
-        <View>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userName}>
-            {user?.firstName || "User"} {user?.lastName || ""}
-          </Text>
-        </View>
-        {user?.profilePicture ? (
-          <Image
-            source={{ uri: user.profilePicture }}
-            style={styles.userAvatar}
-          />
-        ) : (
-          <View style={styles.userInitials}>
-            <Text style={styles.initialsText}>
-              {user?.firstName?.charAt(0) || "U"}
-              {user?.lastName?.charAt(0) || ""}
-            </Text>
+    <View style={styles.container}>
+      <View style={styles.headerTop}>
+        <View style={styles.userInfo}>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>{getTimeOfDay()},</Text>
+            <Text style={styles.userName}>{user?.name || "User"}</Text>
           </View>
-        )}
-      </TouchableOpacity>
+          <Text style={styles.role}>{user?.company || "Company Name"}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.userAvatarContainer}
+          onPress={() => router.push("/(root)/profile")}
+        >
+          {user?.avatar ? (
+            <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>
+                {(user?.name || "U")[0].toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={styles.notificationBadge}>
+            <Ionicons name="notifications" size={16} color="#00A651" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => router.push("/(root)/search")}
+        >
+          <Ionicons name="search-outline" size={20} color="#6B7280" />
+          <Text style={styles.searchPlaceholder}>
+            Search products, orders...
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={() => router.push("/(root)/(tabs)/scanner")}
+        >
+          <Ionicons name="scan-outline" size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-export default Header;
-
 const styles = StyleSheet.create({
-  headerSection: {
-    backgroundColor: "#fff",
-    padding: 20,
+  container: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 15,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    marginBottom: 20,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  greetingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  greeting: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginRight: 4,
   },
   userName: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1e293b",
+    fontWeight: "700",
+    color: "#1F2937",
   },
-  userInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flex: 1,
+  role: {
+    fontSize: 14,
+    color: "#00A651",
+    marginTop: 2,
   },
-  welcomeText: {
-    fontSize: 16,
-    color: "#64748b",
-  },
-  userInitials: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#2563eb",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  initialsText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 16,
+  userAvatarContainer: {
+    position: "relative",
   },
   userAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#00A651",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#ffffff",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#ffffff",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchPlaceholder: {
+    color: "#6B7280",
+    fontSize: 14,
+  },
+  scanButton: {
+    backgroundColor: "#00A651",
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
+
+export default Header;

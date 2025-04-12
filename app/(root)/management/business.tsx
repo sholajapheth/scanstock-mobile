@@ -15,9 +15,10 @@ import {
   Modal,
   FlatList,
   StatusBar,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   useBusiness,
   useCreateBusiness,
@@ -27,8 +28,12 @@ import {
 import { BUSINESS_CATEGORIES } from "@/constants/businessCategories";
 import { COUNTRIES } from "@/constants/countries";
 import { STATES, State } from "@/constants/states";
+import { useUser } from "@/src/hooks/useAuth";
+import { useUserProfile } from "@/src/hooks/useUserProfile";
+import { pickAndUploadImage } from "@/src/utils/supabase-storage-utils";
 
 export default function BusinessProfileScreen() {
+  const router = useRouter();
   const {
     data: business,
     isLoading: isLoadingBusiness,
@@ -36,23 +41,29 @@ export default function BusinessProfileScreen() {
     error,
   } = useBusiness();
   const createBusinessMutation = useCreateBusiness();
-  const updateBusinessMutation = useUpdateBusiness();
+  const { mutate: updateBusiness, isPending: isUpdating } = useUpdateBusiness();
+  const { user } = useUser();
+  const {
+    profile,
+    updateProfile,
+    isUpdating: isUpdatingProfile,
+    updateError,
+  } = useUserProfile();
 
-  const [formData, setFormData] = useState<
-    BusinessData & { customIndustry?: string }
-  >({
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    country: "",
-    phoneNumber: "",
-    website: "",
-    taxId: "",
-    description: "",
-    industry: "",
-    customIndustry: "",
+  const [formData, setFormData] = useState<BusinessData>({
+    name: business?.name || "",
+    address: business?.address || "",
+    city: business?.city || "",
+    state: business?.state || "",
+    postalCode: business?.postalCode || "",
+    country: business?.country || "",
+    phoneNumber: business?.phoneNumber || "",
+    website: business?.website || "",
+    taxId: business?.taxId || "",
+    description: business?.description || "",
+    industry: business?.industry || "",
+    customIndustry: business?.customIndustry || "",
+    logo: business?.logo || "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -77,6 +88,7 @@ export default function BusinessProfileScreen() {
         description: business.description || "",
         industry: business.industry || "",
         customIndustry: business.customIndustry || "",
+        logo: business.logo || "",
       });
     }
   }, [business]);
@@ -106,46 +118,47 @@ export default function BusinessProfileScreen() {
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      const dataToSave = {
-        ...formData,
-        // If industry is "Other", we need to use the customIndustry value
-        industry: formData.industry === "Other" ? "Other" : formData.industry,
-      };
-
-      if (business) {
-        // Update existing business
-        await updateBusinessMutation.mutateAsync(dataToSave);
+    updateBusiness(formData, {
+      onSuccess: () => {
         Alert.alert("Success", "Business profile updated successfully");
-      } else {
-        // Create new business
-        await createBusinessMutation.mutateAsync(dataToSave);
-        Alert.alert("Success", "Business profile created successfully");
+        router.back();
+      },
+      onError: (error) => {
+        Alert.alert(
+          "Error",
+          error.message || "Failed to update business profile"
+        );
+      },
+    });
+  };
+
+  const handleUploadLogo = async () => {
+    try {
+      const imageUrl = await pickAndUploadImage({
+        bucket: "business-logos",
+        fileType: "profile",
+        userId: profile?.id,
+      });
+      if (imageUrl) {
+        await updateBusiness({ logo: imageUrl });
+        Alert.alert("Logo updated successfully");
       }
-      router.back();
-    } catch (error: any) {
-      console.error("Error saving business profile:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to save business profile"
-      );
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      Alert.alert("Failed to upload logo");
     }
   };
 
-  const getCountryName = (code: string) => {
+  const getCountryName = (code?: string) => {
+    if (!code) return "";
     const country = COUNTRIES.find((c) => c.code === code);
-    return country ? country.name : code;
+    return country ? country.name : "";
   };
 
-  const getStateName = (code: string, countryCode: string) => {
-    const state = STATES.find(
-      (s) => s.code === code && s.countryCode === countryCode
-    );
-    return state ? state.name : code;
+  const getStateName = (code?: string, countryCode?: string) => {
+    if (!code || !countryCode) return "";
+    const countryStates = STATES.filter((s) => s.countryCode === countryCode);
+    const state = countryStates.find((s) => s.code === code);
+    return state ? state.name : "";
   };
 
   // Render category selection modal
@@ -301,224 +314,216 @@ export default function BusinessProfileScreen() {
           <Text style={styles.headerTitle}>
             {business ? "Edit Business Profile" : "Create Business Profile"}
           </Text>
-          <View style={styles.headerRight} />
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSave}
+            disabled={isUpdating}
+          >
+            <Text style={styles.saveButtonText}>
+              {isUpdating ? "Saving..." : "Save"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.scrollView}>
           <View style={styles.formContainer}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Business Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.name}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, name: text })
-                }
-                placeholder="Enter your business name"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.phoneNumber}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, phoneNumber: text })
-                }
-                placeholder="Enter business phone number"
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Website</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.website}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, website: text })
-                }
-                placeholder="Enter your business website"
-                keyboardType="url"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Tax ID / Business Number</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.taxId}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, taxId: text })
-                }
-                placeholder="Enter your tax ID or business number"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Business Category</Text>
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
               <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setShowCategoryModal(true)}
+                style={styles.logoContainer}
+                onPress={handleUploadLogo}
+                disabled={isLoading}
               >
-                <Text
-                  style={
-                    formData.industry
-                      ? styles.selectInputText
-                      : styles.placeholderText
-                  }
-                >
-                  {formData.industry || "Select business category"}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#64748b" />
+                {formData.logo ? (
+                  <Image
+                    source={{ uri: formData.logo }}
+                    style={styles.logoImage}
+                  />
+                ) : (
+                  <View style={styles.logoPlaceholder}>
+                    <Ionicons name="business" size={40} color="#00A651" />
+                  </View>
+                )}
+                {isLoading && (
+                  <View style={styles.uploadOverlay}>
+                    <ActivityIndicator color="#fff" />
+                  </View>
+                )}
               </TouchableOpacity>
+              <Text style={styles.logoText}>Tap to change logo</Text>
             </View>
 
-            {formData.industry === "Other" && (
+            {/* Basic Information */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Basic Information</Text>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Custom Category</Text>
+                <Text style={styles.label}>Business Name *</Text>
                 <TextInput
                   style={styles.input}
-                  value={formData.customIndustry}
+                  value={formData.name}
                   onChangeText={(text) =>
-                    setFormData({ ...formData, customIndustry: text })
+                    setFormData({ ...formData, name: text })
                   }
-                  placeholder="Enter your custom business category"
+                  placeholder="Enter your business name"
                 />
               </View>
-            )}
 
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Address Information</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Street Address</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.address}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, address: text })
-                }
-                placeholder="Enter street address"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>City</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.city}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, city: text })
-                }
-                placeholder="Enter city"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Country</Text>
-              <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setShowCountryModal(true)}
-              >
-                <Text
-                  style={
-                    formData.country
-                      ? styles.selectInputText
-                      : styles.placeholderText
-                  }
-                >
-                  {formData.country
-                    ? getCountryName(formData.country)
-                    : "Select country"}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            {formData.country && filteredStates.length > 0 && (
               <View style={styles.formGroup}>
-                <Text style={styles.label}>State/Province</Text>
+                <Text style={styles.label}>Industry</Text>
                 <TouchableOpacity
                   style={styles.selectInput}
-                  onPress={() => setShowStateModal(true)}
+                  onPress={() => setShowCategoryModal(true)}
                 >
-                  <Text
-                    style={
-                      formData.state
-                        ? styles.selectInputText
-                        : styles.placeholderText
-                    }
-                  >
-                    {formData.state
-                      ? getStateName(formData.state, formData.country)
-                      : "Select state/province"}
+                  <Text style={styles.selectText}>
+                    {formData.industry || "Select industry"}
                   </Text>
-                  <Ionicons name="chevron-down" size={20} color="#64748b" />
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* Only show text input for state if country doesn't have predefined states */}
-            {formData.country && filteredStates.length === 0 && (
+              {formData.industry === "Other" && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Custom Industry</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.customIndustry}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, customIndustry: text })
+                    }
+                    placeholder="Enter your industry"
+                  />
+                </View>
+              )}
+
               <View style={styles.formGroup}>
-                <Text style={styles.label}>State/Province/Region</Text>
+                <Text style={styles.label}>Description</Text>
                 <TextInput
-                  style={styles.input}
-                  value={formData.state}
+                  style={[styles.input, styles.textArea]}
+                  value={formData.description}
                   onChangeText={(text) =>
-                    setFormData({ ...formData, state: text })
+                    setFormData({ ...formData, description: text })
                   }
-                  placeholder="Enter state or region"
+                  placeholder="Describe your business"
+                  multiline
+                  numberOfLines={4}
                 />
               </View>
-            )}
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Postal Code</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.postalCode}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, postalCode: text })
-                }
-                placeholder="Enter postal code"
-              />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Business Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.description}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, description: text })
-                }
-                placeholder="Brief description of your business"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+            {/* Contact Information */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Contact Information</Text>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.phoneNumber}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, phoneNumber: text })
+                  }
+                  placeholder="Enter phone number"
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Website</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.website}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, website: text })
+                  }
+                  placeholder="Enter website URL"
+                  keyboardType="url"
+                />
+              </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>
-                  {business
-                    ? "Update Business Profile"
-                    : "Create Business Profile"}
-                </Text>
+            {/* Address Information */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Address Information</Text>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.address}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, address: text })
+                  }
+                  placeholder="Enter street address"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>City</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.city}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, city: text })
+                  }
+                  placeholder="Enter city"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Country</Text>
+                <TouchableOpacity
+                  style={styles.selectInput}
+                  onPress={() => setShowCountryModal(true)}
+                >
+                  <Text style={styles.selectText}>
+                    {getCountryName(formData.country) || "Select country"}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              {formData.country && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>State/Province</Text>
+                  <TouchableOpacity
+                    style={styles.selectInput}
+                    onPress={() => setShowStateModal(true)}
+                  >
+                    <Text style={styles.selectText}>
+                      {getStateName(formData.state, formData.country) ||
+                        "Select state"}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
               )}
-            </TouchableOpacity>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Postal Code</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.postalCode}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, postalCode: text })
+                  }
+                  placeholder="Enter postal code"
+                />
+              </View>
+            </View>
+
+            {/* Tax Information */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tax Information</Text>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Tax ID</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.taxId}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, taxId: text })
+                  }
+                  placeholder="Enter tax ID"
+                />
+              </View>
+            </View>
           </View>
         </ScrollView>
 
@@ -565,8 +570,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  headerRight: {
-    width: 40,
+  saveButton: {
+    padding: 8,
+  },
+  saveButtonText: {
+    color: "#00A651",
+    fontSize: 16,
+    fontWeight: "500",
   },
   scrollView: {
     flex: 1,
@@ -574,74 +584,94 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 16,
   },
-  formGroup: {
-    marginBottom: 16,
+  logoSection: {
+    alignItems: "center",
+    marginBottom: 24,
   },
-  formRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+    overflow: "hidden",
   },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#334155",
-    marginBottom: 6,
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: "#1e293b",
+  logoPlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
   },
-  selectInput: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
+  uploadOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  selectInputText: {
-    fontSize: 16,
-    color: "#1e293b",
+  logoText: {
+    fontSize: 14,
+    color: "#6B7280",
   },
-  placeholderText: {
-    fontSize: 16,
-    color: "#a0aec0",
-  },
-  textArea: {
-    minHeight: 100,
-  },
-  sectionHeader: {
-    marginTop: 8,
-    marginBottom: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+  section: {
+    marginBottom: 24,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0f172a",
+    color: "#1F2937",
+    marginBottom: 16,
   },
-  saveButton: {
-    backgroundColor: "#2563eb",
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: "#f3f4f6",
     borderRadius: 8,
-    padding: 15,
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 40,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "600",
+    padding: 12,
     fontSize: 16,
+    color: "#1F2937",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  selectInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f3f4f6",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  selectText: {
+    fontSize: 16,
+    color: "#1F2937",
   },
   modalOverlay: {
     flex: 1,

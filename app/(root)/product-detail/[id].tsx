@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../../../src/hooks/useProducts";
 import { useCategories } from "../../../src/hooks/useCategories";
 import { router, useLocalSearchParams } from "expo-router";
+import { Category } from "@/src/hooks/useCategories";
 
 const ProductDetailScreen = () => {
   const { productId, barcode, id } = useLocalSearchParams();
@@ -39,10 +41,10 @@ const ProductDetailScreen = () => {
   const [formData, setFormData] = useState({
     name: "",
     price: "",
-    barcode: barcode || "",
+    barcode: (barcode as string) || "",
     description: "",
     quantity: "0",
-    categoryId: null,
+    categoryId: null as number | null,
     sku: "",
     reorderPoint: "",
     costPrice: "",
@@ -129,7 +131,10 @@ const ProductDetailScreen = () => {
         ]);
       } else {
         // Update existing product
-        await updateProduct.mutateAsync({ id: productId, data: productData });
+        await updateProduct.mutateAsync({
+          id: parseInt(productId as string),
+          data: productData,
+        });
         Alert.alert("Success", "Product updated successfully", [
           { text: "OK", onPress: () => router.back() },
         ]);
@@ -175,7 +180,7 @@ const ProductDetailScreen = () => {
   if (!isNewProduct && isLoadingProduct) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#00A651" />
         <Text style={styles.loadingText}>Loading product...</Text>
       </View>
     );
@@ -187,15 +192,20 @@ const ProductDetailScreen = () => {
         updateProduct.isPending ||
         deleteProduct.isPending) && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#00A651" />
         </View>
       )}
 
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {isNewProduct ? "New Product" : "Edit Product"}
         </Text>
-
         {!isNewProduct && product && (
           <TouchableOpacity
             style={styles.favoriteButton}
@@ -299,7 +309,7 @@ const ProductDetailScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            {categories?.map((category) => (
+            {categories?.map((category: Category) => (
               <TouchableOpacity
                 key={category.id}
                 style={[
@@ -436,13 +446,14 @@ const ProductDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
+    marginTop: 50,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
   },
   loadingText: {
     marginTop: 12,
@@ -457,41 +468,46 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   header: {
-    backgroundColor: "#fff",
-    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1e293b",
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  backButton: {
+    padding: 8,
   },
   favoriteButton: {
     padding: 8,
   },
   form: {
-    padding: 16,
+    padding: 20,
   },
   formGroup: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "500",
+    color: "#64748b",
     marginBottom: 8,
-    color: "#1e293b",
   },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: "#e2e8f0",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    color: "#0f172a",
   },
   textArea: {
     minHeight: 100,
@@ -504,7 +520,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   generateButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#00A651",
     padding: 12,
     borderRadius: 8,
     marginLeft: 8,
@@ -518,26 +534,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: "#e2e8f0",
     borderLeftWidth: 4,
     paddingVertical: 8,
     paddingHorizontal: 12,
     margin: 4,
   },
   categoryOptionSelected: {
-    backgroundColor: "#dbeafe",
-    borderColor: "#2563eb",
+    backgroundColor: "#f0fdf4",
+    borderColor: "#00A651",
   },
   categoryOptionText: {
     color: "#64748b",
     fontSize: 14,
   },
   categoryOptionTextSelected: {
-    color: "#2563eb",
+    color: "#00A651",
     fontWeight: "500",
   },
   saveButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#00A651",
     borderRadius: 8,
     padding: 16,
     alignItems: "center",
@@ -545,7 +561,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "600",
     fontSize: 16,
   },
   deleteButton: {
@@ -558,7 +574,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: "#ef4444",
-    fontWeight: "bold",
+    fontWeight: "600",
     fontSize: 16,
   },
   deleteConfirmContainer: {
@@ -578,7 +594,7 @@ const styles = StyleSheet.create({
   },
   deleteConfirmText: {
     fontSize: 16,
-    color: "#1e293b",
+    color: "#0f172a",
     marginBottom: 16,
     textAlign: "center",
   },
@@ -609,7 +625,7 @@ const styles = StyleSheet.create({
   },
   confirmDeleteButtonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "600",
     fontSize: 16,
   },
 });

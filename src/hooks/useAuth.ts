@@ -18,24 +18,54 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   businessName?: string;
 }
 
+export interface ResetPasswordData {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface OTPData {
+  email: string;
+  otp: string;
+}
+
 // Auth functions
 const loginUser = async (credentials: LoginCredentials) => {
-  console.log("loginUser", credentials);
   const response = await unAuthApi.post("/auth/login", credentials);
-  console.log("response", response);
   return response.data;
 };
 
 const registerUser = async (data: RegisterData) => {
-  console.log("registerUser", data);
-  const response = await apiClient.post("/auth/register", data);
-  console.log("response", response);
+  const response = await unAuthApi.post("/auth/register", data);
+  return response.data;
+};
+
+const requestPasswordReset = async (email: string) => {
+  const response = await unAuthApi.post("/auth/password/reset-request", {
+    email,
+  });
+  return response.data;
+};
+
+const resetPassword = async (data: ResetPasswordData) => {
+  const response = await unAuthApi.post("/auth/password/reset", data);
+  return response.data;
+};
+
+const requestOTP = async (email: string) => {
+  const response = await unAuthApi.post("/auth/otp/request", { email });
+  return response.data;
+};
+
+const validateOTP = async (data: OTPData) => {
+  const response = await unAuthApi.post("/auth/otp/validate", data);
   return response.data;
 };
 
@@ -54,13 +84,8 @@ export function useLogin(
   return useMutation({
     mutationFn: loginUser,
     onSuccess: async (data) => {
-      // Save token to storage
       await AsyncStorage.setItem("userToken", data.access_token);
-
-      // Update user data in the cache
       queryClient.setQueryData(["user"], data.user);
-
-      // Invalidate and refetch user profile
       queryClient.invalidateQueries({ queryKey: ["user"] });
       onSuccess?.();
     },
@@ -76,6 +101,30 @@ export function useRegister() {
   });
 }
 
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: requestPasswordReset,
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: resetPassword,
+  });
+}
+
+export function useRequestOTP() {
+  return useMutation({
+    mutationFn: requestOTP,
+  });
+}
+
+export function useValidateOTP() {
+  return useMutation({
+    mutationFn: validateOTP,
+  });
+}
+
 export function useLogout(onSuccess?: () => void, onError?: () => void) {
   const queryClient = useQueryClient();
 
@@ -85,10 +134,7 @@ export function useLogout(onSuccess?: () => void, onError?: () => void) {
       return true;
     },
     onSuccess: () => {
-      // Clear user data from the cache
       queryClient.setQueryData(["user"], null);
-
-      // Reset all queries
       queryClient.resetQueries();
       onSuccess?.();
     },
@@ -111,12 +157,10 @@ export function useUser() {
   } = useQuery({
     queryKey: ["user"],
     queryFn: fetchUserProfile,
-    enabled: !!token, // Only run if we have a token
-    retry: false, // Don't retry if it fails
+    enabled: !!token,
+    retry: false,
     onError: async (err) => {
-      // If we get an authentication error, clear the token
       if (err?.response?.status === 401) {
-        console.log("Authentication failed, clearing token");
         await AsyncStorage.removeItem("userToken");
         setToken(null);
       }

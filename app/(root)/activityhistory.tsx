@@ -28,17 +28,12 @@ const ACTIVITY_FILTERS = [
     label: "Products",
     types: ["product_added", "product_updated"],
   },
-  // Add a new filter for receipts
-  {
-    key: "receipts",
-    label: "Receipts",
-    types: ["receipt_generated", "receipt_downloaded"],
-  },
 ];
 
 const ActivityHistoryScreen = () => {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -69,52 +64,37 @@ const ActivityHistoryScreen = () => {
       useMockData: false,
     });
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refresh();
+    setIsRefreshing(false);
+  };
+
   const getActivityIcon = (type: ActivityItem["type"]) => {
     switch (type) {
       case "sale":
-        return <Ionicons name="cart" size={24} color="#16a34a" />;
+        return "cart";
       case "stock_increase":
-        return <Ionicons name="arrow-up" size={24} color="#2563eb" />;
+        return "arrow-up";
       case "stock_decrease":
-        return <Ionicons name="arrow-down" size={24} color="#dc2626" />;
+        return "arrow-down";
       case "product_added":
-        return <Ionicons name="add-circle" size={24} color="#9333ea" />;
+        return "add-circle";
       case "product_updated":
-        return <Ionicons name="pencil" size={24} color="#f59e0b" />;
+        return "pencil";
       default:
-        return (
-          <Ionicons name="ellipsis-horizontal" size={24} color="#6b7280" />
-        );
+        return "ellipsis-horizontal";
     }
   };
 
-  // Updated handleItemPress function for ActivityHistoryScreen
   const handleItemPress = (item: ActivityItem) => {
     if (item.entityType === "product") {
-      // Navigate to product detail
-      router.push(`/product-detail/${item.entityId}`);
+      router.push(`/(root)/product-detail/${item.entityId}`);
     } else if (item.entityType === "sale") {
-      // Since the sales detail screen doesn't exist yet, we'll show a message
-      // and provide a link to the receipts screen as a helpful alternative
-      Alert.alert(
-        "Sales Detail",
-        "Sale details are not available yet. Would you like to view your saved receipts instead?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "View Receipts",
-            onPress: () => router.push("/receipts"),
-          },
-        ]
-      );
-    } else if (item.entityType === "receipt") {
-      // Directly navigate to receipts screen for receipt activities
-      router.push("/receipts");
+      router.push(`/(root)/sales/${item.entityId}`);
     }
   };
+
   const filterActivities = (activities: ActivityItem[]) => {
     if (activeFilter === "all") {
       return activities;
@@ -136,7 +116,7 @@ const ActivityHistoryScreen = () => {
       onPress={() => handleItemPress(item)}
     >
       <View style={styles.activityIconContainer}>
-        {getActivityIcon(item.type)}
+        <Ionicons name={getActivityIcon(item.type)} size={24} color="#16a34a" />
       </View>
       <View style={styles.activityContent}>
         <Text style={styles.activityDescription}>{item.description}</Text>
@@ -240,8 +220,8 @@ const ActivityHistoryScreen = () => {
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={() => refresh()}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
             colors={["#2563eb"]}
             tintColor="#2563eb"
           />

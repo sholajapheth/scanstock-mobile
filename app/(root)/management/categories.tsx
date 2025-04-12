@@ -20,33 +20,34 @@ import {
   useDeleteCategory,
   useUpdateCategory,
 } from "@/src/hooks/useCategories";
+import { Category } from "@/src/hooks/useProducts";
 
 export default function CategoriesScreen() {
-  const { data: categories, isLoading, isError } = useCategories();
+  const { data: categories = [], isLoading } = useCategories();
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState<CreateCategoryData>({
     name: "",
     description: "",
-    color: "#2563eb", // Default color
+    color: "",
   });
 
   const openCreateModal = () => {
     setEditingCategory(null);
-    setFormData({ name: "", description: "", color: "#2563eb" });
+    setFormData({ name: "", description: "", color: "" });
     setModalVisible(true);
   };
 
-  const openEditModal = (category) => {
+  const openEditModal = (category: Category) => {
     setEditingCategory(category);
     setFormData({
       name: category.name,
       description: category.description || "",
-      color: category.color || "#2563eb",
+      color: category.color || "",
     });
     setModalVisible(true);
   };
@@ -68,8 +69,8 @@ export default function CategoriesScreen() {
             setModalVisible(false);
             Alert.alert("Success", "Category updated successfully");
           },
-          onError: (error) => {
-            Alert.alert("Error", `Failed to update category: ${error.message}`);
+          onError: () => {
+            Alert.alert("Error", "Failed to update category");
           },
         }
       );
@@ -79,19 +80,22 @@ export default function CategoriesScreen() {
           setModalVisible(false);
           Alert.alert("Success", "Category created successfully");
         },
-        onError: (error) => {
-          Alert.alert("Error", `Failed to create category: ${error.message}`);
+        onError: () => {
+          Alert.alert("Error", "Failed to create category");
         },
       });
     }
   };
 
-  const handleDelete = (category) => {
+  const handleDelete = (category: Category) => {
     Alert.alert(
       "Delete Category",
       `Are you sure you want to delete "${category.name}"?`,
       [
-        { text: "Cancel", style: "cancel" },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
         {
           text: "Delete",
           style: "destructive",
@@ -100,11 +104,8 @@ export default function CategoriesScreen() {
               onSuccess: () => {
                 Alert.alert("Success", "Category deleted successfully");
               },
-              onError: (error) => {
-                Alert.alert(
-                  "Error",
-                  `Failed to delete category: ${error.message}`
-                );
+              onError: () => {
+                Alert.alert("Error", "Failed to delete category");
               },
             });
           },
@@ -113,36 +114,34 @@ export default function CategoriesScreen() {
     );
   };
 
-  const renderCategoryItem = ({ item }) => (
+  const renderCategoryItem = ({ item }: { item: Category }) => (
     <View style={styles.categoryItem}>
       <View style={styles.categoryInfo}>
         <View
           style={[
             styles.colorIndicator,
-            { backgroundColor: item.color || "#2563eb" },
+            { backgroundColor: item.color || "#E5E7EB" },
           ]}
         />
-        <View>
+        <View style={styles.categoryDetails}>
           <Text style={styles.categoryName}>{item.name}</Text>
-          {item.description ? (
+          {item.description && (
             <Text style={styles.categoryDescription}>{item.description}</Text>
-          ) : null}
+          )}
         </View>
       </View>
-
-      <View style={styles.categoryActions}>
+      <View style={styles.actions}>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => openEditModal(item)}
         >
-          <Ionicons name="pencil-outline" size={20} color="#64748b" />
+          <Ionicons name="pencil" size={20} color="#4B5563" />
         </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleDelete(item)}
         >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          <Ionicons name="trash" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
     </View>
@@ -169,21 +168,6 @@ export default function CategoriesScreen() {
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
         <Text style={styles.loadingText}>Loading categories...</Text>
-      </View>
-    );
-  }
-
-  if (isError) {
-    return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-        <Text style={styles.errorText}>Failed to load categories</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => router.reload()}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -366,6 +350,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 12,
   },
+  categoryDetails: {
+    flex: 1,
+  },
   categoryName: {
     fontSize: 16,
     fontWeight: "500",
@@ -376,7 +363,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#64748b",
   },
-  categoryActions: {
+  actions: {
     flexDirection: "row",
     alignItems: "center",
   },
@@ -418,22 +405,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: "#64748b",
-  },
-  errorText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#64748b",
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "#fff",
-    fontWeight: "500",
   },
   modalContainer: {
     flex: 1,

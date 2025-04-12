@@ -12,6 +12,7 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -176,7 +177,7 @@ export default function SalesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -399,7 +400,7 @@ export default function SalesScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -421,7 +422,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    paddingTop: StatusBar.currentHeight,
   },
   header: {
     flexDirection: "row",
