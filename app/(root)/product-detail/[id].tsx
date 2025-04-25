@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -151,7 +152,12 @@ const ProductDetailScreen = () => {
     try {
       await deleteProduct.mutateAsync(id ? parseInt(id as string) : 0);
       Alert.alert("Success", "Product deleted successfully", [
-        { text: "OK", onPress: () => router.back() },
+        {
+          text: "OK",
+          onPress: () => {
+            router.replace("/inventory");
+          },
+        },
       ]);
     } catch (error: any) {
       Alert.alert(
@@ -447,7 +453,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    marginTop: 50,
+    marginTop: StatusBar.currentHeight,
   },
   loadingContainer: {
     flex: 1,

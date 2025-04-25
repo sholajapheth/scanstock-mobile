@@ -2,22 +2,17 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-
-interface User {
-  name?: string;
-  company?: string;
-  avatar?: string;
-}
+import { User } from "@/src/types/user";
 
 interface HeaderProps {
-  user?: User | null;
+  user: User | null;
 }
 
-const Header = ({ user }: HeaderProps) => {
+const Header: React.FC<HeaderProps> = ({ user }) => {
   const getTimeOfDay = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
+    if (hour < 18) return "Good afternoon";
     return "Good evening";
   };
 
@@ -27,27 +22,33 @@ const Header = ({ user }: HeaderProps) => {
         <View style={styles.userInfo}>
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>{getTimeOfDay()},</Text>
-            <Text style={styles.userName}>{user?.name || "User"}</Text>
+            <Text style={styles.userName}>{user?.firstName || "User"} 👋</Text>
           </View>
-          <Text style={styles.role}>{user?.company || "Company Name"}</Text>
+          {user?.business?.name && (
+            <Text style={styles.role}>
+              {user?.business?.name.length > 30
+                ? user?.business?.name.slice(0, 30) + "..."
+                : user?.business?.name}
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
-          style={styles.userAvatarContainer}
-          onPress={() => router.push("/(root)/profile")}
+          style={styles.avatarContainer}
+          onPress={() => router.push("/profile")}
         >
-          {user?.avatar ? (
-            <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
+          {user?.profilePicture ? (
+            <Image
+              source={{ uri: user.profilePicture }}
+              style={styles.avatar}
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarText}>
-                {(user?.name || "U")[0].toUpperCase()}
+                {(user?.firstName || "U")[0].toUpperCase()}
               </Text>
             </View>
           )}
-          <View style={styles.notificationBadge}>
-            <Ionicons name="notifications" size={16} color="#00A651" />
-          </View>
         </TouchableOpacity>
       </View>
 
@@ -99,8 +100,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greetingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     flexWrap: "wrap",
   },
   greeting: {
@@ -118,40 +117,26 @@ const styles = StyleSheet.create({
     color: "#00A651",
     marginTop: 2,
   },
-  userAvatarContainer: {
-    position: "relative",
+  avatarContainer: {
+    marginLeft: 16,
   },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "#00A651",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
     color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#ffffff",
+    fontSize: 20,
+    fontWeight: "bold",
   },
   searchContainer: {
     flexDirection: "row",

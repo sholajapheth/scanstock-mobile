@@ -16,7 +16,7 @@ import { useSales } from "@/src/hooks/useSales";
 import { Product } from "@/src/hooks/useProducts";
 import { Sale } from "@/src/hooks/useSales";
 import { format } from "date-fns";
-
+import { formatCurrency } from "@/src/utils/format";
 type SearchResult = {
   type: "product" | "sale";
   data: Product | Sale;
@@ -30,8 +30,10 @@ const SearchScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
 
   // Fetch search results
-  const { data: products = [], isLoading: isLoadingProducts } =
+  const { data = [], isLoading: isLoadingProducts } =
     useSearchProducts(searchQuery);
+
+  const products = data?.items || [];
 
   console.log("products", products);
 
@@ -52,10 +54,10 @@ const SearchScreen = () => {
   // Combine and format search results
   const searchResults: SearchResult[] = [
     ...(activeFilter !== "sales"
-      ? products.map((p: Product) => ({ type: "product", data: p }))
+      ? products?.map((p: Product) => ({ type: "product", data: p }))
       : []),
     ...(activeFilter !== "products"
-      ? filteredSales.map((s: Sale) => ({ type: "sale", data: s }))
+      ? filteredSales?.map((s: Sale) => ({ type: "sale", data: s }))
       : []),
   ];
 
@@ -118,8 +120,7 @@ const SearchScreen = () => {
               {sale.createdAt
                 ? format(new Date(sale.createdAt), "MMM d, yyyy")
                 : "N/A"}{" "}
-              • $
-              {typeof sale.total === "number" ? sale.total.toFixed(2) : "0.00"}
+              • {formatCurrency(sale.total)}
             </Text>
           </View>
         </TouchableOpacity>

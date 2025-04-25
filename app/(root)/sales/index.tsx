@@ -19,6 +19,8 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../src/lib/api-client";
 import { formatCurrency, formatDate } from "../../../src/utils/format";
+import { useSaleStatistics } from "@/src/hooks/useSales";
+import { Colors } from "@/constants/Colors";
 
 // Type definitions
 interface Sale {
@@ -52,6 +54,11 @@ export default function SalesScreen() {
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week, month
   const [statusFilter, setStatusFilter] = useState("all"); // all, completed, pending, cancelled
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch sales statistics
+  const { data: salesStats, isPending: isLoadingSales } = useSaleStatistics();
+
+  console.log("salesStats", salesStats);
 
   // Debounce search query
   useEffect(() => {
@@ -123,24 +130,28 @@ export default function SalesScreen() {
 
       <View style={styles.saleDetails}>
         <View style={styles.saleInfo}>
-          <Ionicons name="calendar-outline" size={16} color="#64748b" />
+          <Ionicons
+            name="calendar-outline"
+            size={16}
+            color={Colors.gray[500]}
+          />
           <Text style={styles.saleInfoText}>{formatDate(item.createdAt)}</Text>
         </View>
 
         <View style={styles.saleInfo}>
-          <Ionicons name="person-outline" size={16} color="#64748b" />
+          <Ionicons name="person-outline" size={16} color={Colors.gray[500]} />
           <Text style={styles.saleInfoText}>
             {item.customerName || "Walk-in customer"}
           </Text>
         </View>
 
         <View style={styles.saleInfo}>
-          <Ionicons name="card-outline" size={16} color="#64748b" />
+          <Ionicons name="card-outline" size={16} color={Colors.gray[500]} />
           <Text style={styles.saleInfoText}>{item.paymentMethod}</Text>
         </View>
 
         <View style={styles.saleInfo}>
-          <Ionicons name="basket-outline" size={16} color="#64748b" />
+          <Ionicons name="basket-outline" size={16} color={Colors.gray[500]} />
           <Text style={styles.saleInfoText}>
             {item.items.length} {item.items.length === 1 ? "item" : "items"}
           </Text>
@@ -149,14 +160,14 @@ export default function SalesScreen() {
 
       <View style={styles.saleFooter}>
         <Text style={styles.saleTotal}>{formatCurrency(item.total)}</Text>
-        <Ionicons name="chevron-forward" size={20} color="#64748b" />
+        <Ionicons name="chevron-forward" size={20} color={Colors.gray[500]} />
       </View>
     </TouchableOpacity>
   );
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="receipt-outline" size={64} color="#94a3b8" />
+      <Ionicons name="receipt-outline" size={64} color={Colors.gray[400]} />
       <Text style={styles.emptyText}>No sales found</Text>
       {searchQuery || dateFilter !== "all" || statusFilter !== "all" ? (
         <Text style={styles.emptySubtext}>
@@ -183,30 +194,66 @@ export default function SalesScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={Colors.slate[900]} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sales History</Text>
         <TouchableOpacity
           style={styles.newButton}
           onPress={handleCreateNewSale}
         >
-          <Ionicons name="add-circle-outline" size={24} color="#0f172a" />
+          <Ionicons
+            name="add-circle-outline"
+            size={24}
+            color={Colors.slate[900]}
+          />
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Ionicons name="receipt-outline" size={24} color={Colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.statValue}>
+              {isLoadingSales ? "..." : salesStats?.totalSales || 0}
+            </Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
+          </View>
+        </View>
+
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Ionicons name="cash-outline" size={24} color={Colors.success} />
+          </View>
+          <View>
+            <Text style={styles.statValue}>
+              {isLoadingSales
+                ? "..."
+                : formatCurrency(salesStats?.totalRevenue || 0)}
+            </Text>
+            <Text style={styles.statLabel}>Total Sales</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#94a3b8" />
+          <Ionicons name="search" size={20} color={Colors.gray[400]} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by order no., customer, date or status"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={Colors.gray[400]}
             value={searchQuery}
             onChangeText={handleSearch}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={20} color="#94a3b8" />
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={Colors.gray[400]}
+              />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -318,7 +365,9 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("completed")}
           >
-            <View style={[styles.statusDot, { backgroundColor: "#10b981" }]} />
+            <View
+              style={[styles.statusDot, { backgroundColor: Colors.success }]}
+            />
             <Text
               style={[
                 styles.filterChipText,
@@ -336,7 +385,9 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("pending")}
           >
-            <View style={[styles.statusDot, { backgroundColor: "#f59e0b" }]} />
+            <View
+              style={[styles.statusDot, { backgroundColor: Colors.warning }]}
+            />
             <Text
               style={[
                 styles.filterChipText,
@@ -354,7 +405,9 @@ export default function SalesScreen() {
             ]}
             onPress={() => handleFilterByStatus("cancelled")}
           >
-            <View style={[styles.statusDot, { backgroundColor: "#ef4444" }]} />
+            <View
+              style={[styles.statusDot, { backgroundColor: Colors.danger }]}
+            />
             <Text
               style={[
                 styles.filterChipText,
@@ -369,12 +422,16 @@ export default function SalesScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading sales...</Text>
         </View>
       ) : isError ? (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <Ionicons
+            name="alert-circle-outline"
+            size={64}
+            color={Colors.danger}
+          />
           <Text style={styles.errorText}>Failed to load sales</Text>
           <TouchableOpacity
             style={styles.retryButton}
@@ -394,8 +451,8 @@ export default function SalesScreen() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              colors={["#2563eb"]}
-              tintColor="#2563eb"
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
             />
           }
         />
@@ -408,20 +465,21 @@ export default function SalesScreen() {
 const getStatusStyle = (status: string) => {
   switch (status.toLowerCase()) {
     case "completed":
-      return { backgroundColor: "#10b981" }; // Green
+      return { backgroundColor: Colors.success };
     case "pending":
-      return { backgroundColor: "#f59e0b" }; // Yellow
+      return { backgroundColor: Colors.warning };
     case "cancelled":
-      return { backgroundColor: "#ef4444" }; // Red
+      return { backgroundColor: Colors.danger };
     default:
-      return { backgroundColor: "#6b7280" }; // Gray
+      return { backgroundColor: Colors.gray[500] };
   }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.slate[50],
+    marginTop: StatusBar.currentHeight,
   },
   header: {
     flexDirection: "row",
@@ -429,20 +487,57 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: Colors.slate[200],
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#0f172a",
+    color: Colors.slate[900],
   },
   backButton: {
     padding: 8,
   },
   newButton: {
     padding: 8,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.slate[200],
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.slate[50],
+    borderRadius: 8,
+    padding: 12,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: Colors.slate[200],
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.blue[50],
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.slate[900],
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.gray[500],
   },
   searchContainer: {
     padding: 16,
@@ -451,18 +546,18 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.slate[200],
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: "#0f172a",
+    color: Colors.slate[900],
   },
   filterContainer: {
     paddingLeft: 16,
@@ -472,7 +567,7 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: Colors.slate[200],
   },
   filterScrollContent: {
     paddingRight: 16,
@@ -481,21 +576,21 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: Colors.slate[100],
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
   },
   activeFilterChip: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.primary,
   },
   filterChipText: {
     fontSize: 14,
-    color: "#64748b",
+    color: Colors.gray[500],
   },
   activeFilterChipText: {
-    color: "#fff",
+    color: Colors.white,
     fontWeight: "500",
   },
   statusDot: {
@@ -509,12 +604,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   saleCard: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.slate[200],
   },
   saleHeader: {
     flexDirection: "row",
@@ -525,7 +620,7 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#0f172a",
+    color: Colors.slate[900],
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -533,7 +628,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    color: "#fff",
+    color: Colors.white,
     fontSize: 12,
     fontWeight: "500",
     textTransform: "uppercase",
@@ -549,7 +644,7 @@ const styles = StyleSheet.create({
   saleInfoText: {
     marginLeft: 8,
     fontSize: 14,
-    color: "#1e293b",
+    color: Colors.slate[800],
   },
   saleFooter: {
     flexDirection: "row",
@@ -557,12 +652,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
+    borderTopColor: Colors.slate[100],
   },
   saleTotal: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#0f172a",
+    color: Colors.slate[900],
   },
   loadingContainer: {
     flex: 1,
@@ -573,7 +668,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#64748b",
+    color: Colors.gray[500],
   },
   errorContainer: {
     flex: 1,
@@ -585,16 +680,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
     fontSize: 16,
-    color: "#64748b",
+    color: Colors.gray[500],
   },
   retryButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: "#fff",
+    color: Colors.white,
     fontWeight: "500",
   },
   emptyContainer: {
@@ -607,24 +702,24 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "500",
-    color: "#64748b",
+    color: Colors.gray[500],
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: "#94a3b8",
+    color: Colors.gray[400],
     textAlign: "center",
     marginBottom: 20,
   },
   newSaleButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
   newSaleButtonText: {
-    color: "#fff",
+    color: Colors.white,
     fontWeight: "500",
   },
 });

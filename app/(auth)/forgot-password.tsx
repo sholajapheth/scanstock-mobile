@@ -49,7 +49,10 @@ const ForgotPasswordScreen = () => {
           Alert.alert("Success", "OTP has been sent to your email");
         },
         onError: (error) => {
-          Alert.alert("Error", error.message || "Failed to send OTP");
+          Alert.alert(
+            "Error",
+            error?.response?.data?.message || "Failed to send OTP"
+          );
         },
       });
     } catch (error) {
@@ -71,7 +74,10 @@ const ForgotPasswordScreen = () => {
             setStep("reset");
           },
           onError: (error) => {
-            Alert.alert("Error", error.message || "Invalid OTP");
+            Alert.alert(
+              "Error",
+              error?.response?.data?.message || "Invalid OTP"
+            );
           },
         }
       );

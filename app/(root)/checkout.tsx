@@ -1,4 +1,3 @@
-/// src/screens/CheckoutScreen.tsx
 import React, { useContext, useState } from "react";
 import {
   View,
@@ -22,6 +21,7 @@ import generateReceiptHTML from "../../src/components/receipt/ReceiptGenerator";
 import ReceiptActionModal from "../../src/components/modals/ReceiptActionModal";
 import { useBusiness } from "@/src/hooks/useBusiness";
 import ScannerModal from "@/components/scanner/ScannerModal";
+import { formatCurrency } from "@/src/utils/format";
 
 interface CartItem {
   id: number;
@@ -410,7 +410,7 @@ const CheckoutScreen: React.FC = () => {
     <View style={styles.cartItem}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemPrice}>${item.price}</Text>
+        <Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text>
       </View>
 
       <View style={styles.itemActions}>
@@ -432,7 +432,9 @@ const CheckoutScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.itemTotal}>${item.price * item.quantity}</Text>
+        <Text style={styles.itemTotal}>
+          {formatCurrency(item.price * item.quantity)}
+        </Text>
 
         <TouchableOpacity
           style={styles.removeButton}
@@ -486,7 +488,9 @@ const CheckoutScreen: React.FC = () => {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total Amount:</Text>
-            <Text style={styles.summaryAmount}>${totalAmount}</Text>
+            <Text style={styles.summaryAmount}>
+              {formatCurrency(totalAmount)}
+            </Text>
           </View>
 
           <View style={styles.actionButtons}>
@@ -569,7 +573,9 @@ const CheckoutScreen: React.FC = () => {
               </View>
               <View style={styles.modalSummaryRow}>
                 <Text style={styles.modalSummaryTotal}>Total:</Text>
-                <Text style={styles.modalSummaryTotal}>${totalAmount}</Text>
+                <Text style={styles.modalSummaryTotal}>
+                  {formatCurrency(totalAmount)}
+                </Text>
               </View>
             </View>
 

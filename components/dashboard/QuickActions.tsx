@@ -30,7 +30,14 @@ const QuickActions = () => {
           <QuickAction
             icon="add-circle-outline"
             label="Add Product"
-            onPress={() => router.push("/(root)/product-detail")}
+            onPress={() =>
+              router.push({
+                pathname: "/(root)/(tabs)/scanner",
+                params: {
+                  state: "inventory",
+                },
+              })
+            }
             color="#10b981"
           />
           <QuickAction

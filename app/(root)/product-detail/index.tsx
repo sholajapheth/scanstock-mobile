@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -66,7 +67,7 @@ const ProductDetailScreen = () => {
     <ScrollView style={styles.container}>
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color="#00A651" />
         </View>
       )}
 
@@ -250,8 +251,8 @@ const ProductDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    marginTop: 50,
+    backgroundColor: "#f8fafc",
+    marginTop: StatusBar.currentHeight,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   generateButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#00A651",
     padding: 12,
     borderRadius: 8,
     marginLeft: 8,
@@ -312,19 +313,19 @@ const styles = StyleSheet.create({
     margin: 4,
   },
   categoryOptionSelected: {
-    backgroundColor: "#dbeafe",
-    borderColor: "#2563eb",
+    backgroundColor: "#e6f4ea",
+    borderColor: "#00A651",
   },
   categoryOptionText: {
     color: "#64748b",
     fontSize: 14,
   },
   categoryOptionTextSelected: {
-    color: "#2563eb",
+    color: "#00A651",
     fontWeight: "500",
   },
   saveButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#00A651",
     borderRadius: 8,
     padding: 16,
     alignItems: "center",

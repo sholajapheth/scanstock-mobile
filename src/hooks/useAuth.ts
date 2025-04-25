@@ -1,17 +1,10 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import apiClient, { unAuthApi } from "../lib/api-client";
+import apiClient, { unAuthApi, api } from "../lib/api-client";
+import { User } from "../types/user";
 
 // Types
-export interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  businessName?: string;
-}
-
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -32,6 +25,11 @@ export interface ResetPasswordData {
 }
 
 export interface OTPData {
+  email: string;
+  otp: string;
+}
+
+export interface EmailVerificationData {
   email: string;
   otp: string;
 }
@@ -66,6 +64,18 @@ const requestOTP = async (email: string) => {
 
 const validateOTP = async (data: OTPData) => {
   const response = await unAuthApi.post("/auth/otp/validate", data);
+  return response.data;
+};
+
+const verifyEmail = async (data: EmailVerificationData) => {
+  const response = await apiClient.post("/auth/verify-email", data);
+  return response.data;
+};
+
+const resendVerificationCode = async (email: string) => {
+  const response = await apiClient.post("/auth/resend-verification", {
+    email,
+  });
   return response.data;
 };
 
@@ -125,6 +135,23 @@ export function useValidateOTP() {
   });
 }
 
+export function useVerifyEmail() {
+  const { refetchUser } = useUser();
+
+  return useMutation({
+    mutationFn: verifyEmail,
+    onSuccess: () => {
+      refetchUser();
+    },
+  });
+}
+
+export function useResendVerificationCode() {
+  return useMutation({
+    mutationFn: resendVerificationCode,
+  });
+}
+
 export function useLogout(onSuccess?: () => void, onError?: () => void) {
   const queryClient = useQueryClient();
 
@@ -144,48 +171,69 @@ export function useLogout(onSuccess?: () => void, onError?: () => void) {
   });
 }
 
-export function useUser() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
 
-  const {
-    data: user,
-    isLoading: isLoadingUser,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["user"],
-    queryFn: fetchUserProfile,
-    enabled: !!token,
-    retry: false,
-    onError: async (err) => {
-      if (err?.response?.status === 401) {
-        await AsyncStorage.removeItem("userToken");
-        setToken(null);
-      }
-    },
+export const useUser = () => {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true,
   });
 
-  useEffect(() => {
-    const getToken = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem("userToken");
-        setToken(storedToken);
-      } catch (error) {
-        console.error("Error retrieving token:", error);
-      } finally {
-        setIsLoading(false);
+  const loadUser = async () => {
+    try {
+      const token = await AsyncStorage.getItem("userToken");
+      if (!token) {
+        setState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+        return;
       }
-    };
 
-    getToken();
+      const result = await api.get("/users/me");
+
+      if (result.success) {
+        setState({
+          user: result.data,
+          token,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } else {
+        setState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
+    } catch (error) {
+      setState({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    }
+  };
+
+  const refetchUser = async () => {
+    setState((prev) => ({ ...prev, isLoading: true }));
+    await loadUser();
+  };
+
+  useEffect(() => {
+    loadUser();
   }, []);
 
-  return {
-    user,
-    token,
-    isAuthenticated: !!token && !!user && !isError,
-    isLoading: isLoading || (!!token && isLoadingUser),
-  };
-}
+  return { ...state, refetchUser };
+};

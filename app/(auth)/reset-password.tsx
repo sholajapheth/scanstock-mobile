@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,14 +12,27 @@ import {
   SafeAreaView,
   Image,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useResetPassword } from "@/src/hooks/useAuth";
 
 const ResetPasswordScreen = () => {
+  const { email, otp } = useLocalSearchParams<{ email: string; otp: string }>();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { mutate: resetPassword, isPending: isLoading } = useResetPassword();
+
+  useEffect(() => {
+    if (!email || !otp) {
+      Alert.alert(
+        "Error",
+        "Missing required information. Please go back to the previous step.",
+        [{ text: "OK", onPress: () => router.push("/(auth)/forgot-password") }]
+      );
+    }
+  }, [email, otp]);
 
   const handleResetPassword = async () => {
     if (!password || !confirmPassword) {
@@ -37,19 +50,37 @@ const ResetPasswordScreen = () => {
       return;
     }
 
-    setIsLoading(true);
+    if (!email || !otp) {
+      Alert.alert("Error", "Missing required information");
+      return;
+    }
+
     try {
-      // TODO: Implement API call to reset password
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated API call
-      Alert.alert(
-        "Success",
-        "Your password has been reset successfully. Please login with your new password.",
-        [{ text: "OK", onPress: () => router.push("/(auth)/login") }]
+      resetPassword(
+        {
+          email: email as string,
+          otp: otp as string,
+          newPassword: password,
+        },
+        {
+          onSuccess: () => {
+            Alert.alert(
+              "Success",
+              "Your password has been reset successfully. Please login with your new password.",
+              [{ text: "OK", onPress: () => router.push("/(auth)/login") }]
+            );
+          },
+          onError: (error: any) => {
+            Alert.alert(
+              "Error",
+              error?.response?.data?.message ||
+                "Failed to reset password. Please try again."
+            );
+          },
+        }
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to reset password. Please try again.");
-    } finally {
-      setIsLoading(false);
+      Alert.alert("Error", "An unexpected error occurred");
     }
   };
 
@@ -135,7 +166,7 @@ const ResetPasswordScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push("/(auth)/login")}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#00A651" />

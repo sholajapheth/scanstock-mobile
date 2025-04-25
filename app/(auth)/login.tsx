@@ -64,7 +64,7 @@ const LoginScreen = () => {
           />
           <Text style={styles.logoText}>ScanStock Pro</Text>
           <Text style={styles.tagline}>
-            Inventory Management for Small Business
+            Clever Inventory Management for Businesses
           </Text>
         </View>
 

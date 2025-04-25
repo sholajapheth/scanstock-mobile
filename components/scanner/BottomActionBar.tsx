@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../constants/Colors";
 
 /**
  * BottomActionBar - A component that displays the bottom action button
@@ -47,12 +48,17 @@ const styles = StyleSheet.create({
     borderTopColor: "#e2e8f0",
   },
   actionButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.light.primary,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 20,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   actionButtonText: {
     color: "#fff",

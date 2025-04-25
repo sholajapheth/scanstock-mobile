@@ -15,25 +15,33 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useRegister } from "../../src/hooks/useAuth";
 
 const RegisterScreen = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [company, setCompany] = useState("");
+  const [firstName, setFirstName] = useState(__DEV__ ? "John" : "");
+  const [lastName, setLastName] = useState(__DEV__ ? "Doe" : "");
+  const [email, setEmail] = useState(__DEV__ ? "sholajapheth@gmail.com" : "");
+  const [password, setPassword] = useState(__DEV__ ? "password1234" : "");
+  const [confirmPassword, setConfirmPassword] = useState(
+    __DEV__ ? "password1234" : ""
+  );
+  const [phone, setPhone] = useState(__DEV__ ? "0712345678" : "");
+  const [businessName, setBusinessName] = useState(
+    __DEV__ ? "Test Company" : ""
+  );
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { mutate: register, isPending: isLoading } = useRegister();
 
   const handleRegister = async () => {
     if (
-      !name ||
+      !firstName ||
+      !lastName ||
       !email ||
       !password ||
       !confirmPassword ||
       !phone ||
-      !company
+      !businessName
     ) {
       Alert.alert("Error", "Please fill in all fields");
       return;
@@ -63,19 +71,34 @@ const RegisterScreen = () => {
       return;
     }
 
-    setIsLoading(true);
     try {
-      // TODO: Implement API call to register
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated API call
-      Alert.alert(
-        "Success",
-        "Registration successful! Please login with your credentials.",
-        [{ text: "OK", onPress: () => router.push("/(auth)/login") }]
+      register(
+        {
+          firstName,
+          lastName,
+          email,
+          password,
+          businessName,
+        },
+        {
+          onSuccess: () => {
+            Alert.alert(
+              "Success",
+              "Registration successful! Please login with your credentials.",
+              [{ text: "OK", onPress: () => router.push("/(auth)/login") }]
+            );
+          },
+          onError: (error: any) => {
+            Alert.alert(
+              "Error",
+              error.response?.data?.message ||
+                "Registration failed. Please try again."
+            );
+          },
+        }
       );
     } catch (error) {
       Alert.alert("Error", "Registration failed. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -110,10 +133,27 @@ const RegisterScreen = () => {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Full Name"
+                placeholder="First Name"
                 placeholderTextColor="#6B7280"
-                value={name}
-                onChangeText={setName}
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color="#00A651"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Last Name"
+                placeholderTextColor="#6B7280"
+                value={lastName}
+                onChangeText={setLastName}
                 autoCapitalize="words"
               />
             </View>
@@ -151,23 +191,6 @@ const RegisterScreen = () => {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="business-outline"
-                size={20}
-                color="#00A651"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Company Name"
-                placeholderTextColor="#6B7280"
-                value={company}
-                onChangeText={setCompany}
-                autoCapitalize="words"
               />
             </View>
 

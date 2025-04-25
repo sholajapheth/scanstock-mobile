@@ -7,12 +7,12 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
+  useColorScheme,
 } from "react-native";
 import { Camera, CameraView } from "expo-camera";
 import {
   useProducts,
   useProductByBarcode,
-  Product,
 } from "../../../src/hooks/useProducts";
 import { useCart } from "../../../src/hooks/useCart";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -30,12 +30,42 @@ import {
 } from "../../../components/scanner";
 import ScannerModal from "../../../components/scanner/ScannerModal";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../../constants/Colors";
+import { formatCurrency } from "@/src/utils/format";
 
 const log = new Logger("Scanner");
 
+interface ProductItem {
+  id: string;
+  barcode: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface ToastState {
+  visible: boolean;
+  message: string;
+  productName: string | null;
+  productPrice: string | null;
+}
+
 // Toast Component
-const Toast = ({ message, visible, productName, productPrice }) => {
+interface ToastProps {
+  message: string;
+  visible: boolean;
+  productName: string | null;
+  productPrice: number | null;
+}
+
+const Toast: React.FC<ToastProps> = ({
+  message,
+  visible,
+  productName,
+  productPrice,
+}) => {
   const [fadeAnim] = useState(new Animated.Value(0));
+  const colors = Colors.light;
 
   useEffect(() => {
     if (visible) {
@@ -66,6 +96,7 @@ const Toast = ({ message, visible, productName, productPrice }) => {
       style={[
         styles.toast,
         {
+          backgroundColor: colors.background,
           opacity: fadeAnim,
           transform: [
             {
@@ -79,13 +110,15 @@ const Toast = ({ message, visible, productName, productPrice }) => {
       ]}
     >
       <View style={styles.toastIcon}>
-        <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+        <Ionicons name="checkmark-circle" size={24} color={colors.success} />
       </View>
       <View style={styles.toastContent}>
-        <Text style={styles.toastTitle}>{message}</Text>
+        <Text style={[styles.toastTitle, { color: colors.text }]}>
+          {message}
+        </Text>
         {productName && (
-          <Text style={styles.toastSubtitle}>
-            {productName} - ${productPrice}
+          <Text style={[styles.toastSubtitle, { color: colors.icon }]}>
+            {productName} - {formatCurrency(productPrice)}
           </Text>
         )}
       </View>
@@ -93,22 +126,41 @@ const Toast = ({ message, visible, productName, productPrice }) => {
   );
 };
 
+interface ModalAction {
+  text: string;
+  primary: boolean;
+  icon?: string;
+  onPress: () => void;
+}
+
+interface ModalConfig {
+  title: string;
+  message: string;
+  status: "success" | "warning" | "error";
+  productName: string | null;
+  productPrice: string | null;
+  actions: ModalAction[];
+}
+
 const ScannerScreen = () => {
   const { checkout } = useLocalSearchParams();
-  const [hasPermission, setHasPermission] = useState(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
-  const [scanMode, setScanMode] = useState(checkout ? "checkout" : "inventory");
-  const [barcode, setBarcode] = useState(null);
+  const [scanMode, setScanMode] = useState<"checkout" | "inventory">(
+    checkout ? "checkout" : "inventory"
+  );
+  const [barcode, setBarcode] = useState<string | null>(null);
   const [manuallyChecking, setManuallyChecking] = useState(false);
-  const [currentProductId, setCurrentProductId] = useState(null);
-  const [sound, setSound] = useState(null);
+  const [currentProductId, setCurrentProductId] = useState<string | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  // Last scanned barcode to prevent duplicate scans
-  const [lastScannedBarcode, setLastScannedBarcode] = useState(null);
-  const [lastScannedTime, setLastScannedTime] = useState(0);
+  // Debounce scanning
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanDebounceTimeout, setScanDebounceTimeout] =
+    useState<NodeJS.Timeout | null>(null);
 
   // Toast state
-  const [toast, setToast] = useState({
+  const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: "",
     productName: null,
@@ -117,7 +169,7 @@ const ScannerScreen = () => {
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
+  const [modalConfig, setModalConfig] = useState<ModalConfig>({
     title: "",
     message: "",
     status: "success",
@@ -141,6 +193,8 @@ const ScannerScreen = () => {
   } = useProductByBarcode(barcode);
 
   const { addToCart } = useCart();
+
+  const colors = Colors.light;
 
   // Close modal handler
   const handleCloseModal = () => {
@@ -179,7 +233,7 @@ const ScannerScreen = () => {
 
       // Try to find the product in the latest fetched data
       if (allProducts && allProducts.length > 0) {
-        product = allProducts.find((p) => p.barcode === barcode);
+        product = allProducts.find((p: ProductItem) => p.barcode === barcode);
       }
 
       // If not found in allProducts, try the inventoryContext
@@ -218,7 +272,9 @@ const ScannerScreen = () => {
 
     // First check in allProducts (latest data)
     if (allProducts && allProducts.length > 0) {
-      const foundProduct = allProducts.find((p) => p.barcode === barcode);
+      const foundProduct = allProducts.find(
+        (p: ProductItem) => p.barcode === barcode
+      );
       if (foundProduct) return foundProduct;
     }
 
@@ -256,18 +312,17 @@ const ScannerScreen = () => {
   };
 
   // Show toast message
-  const showToast = (message, productName = null, productPrice = null) => {
+  const showToast = (
+    message: string,
+    productName: string | null = null,
+    productPrice: number | null = null
+  ) => {
     setToast({
       visible: true,
       message,
       productName,
-      productPrice,
+      productPrice: productPrice?.toString() ?? null,
     });
-
-    // Auto hide toast after 3 seconds
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 3000);
   };
 
   useEffect(() => {
@@ -288,35 +343,7 @@ const ScannerScreen = () => {
           setCurrentProductId(productToUse.id);
         } else if ((productError || !isLoadingProduct) && !manuallyChecking) {
           // Product doesn't exist, show modal
-          setModalConfig({
-            title: "Product Not Found",
-            message: "This product doesn't exist in your inventory.",
-            status: "warning",
-            productName: null,
-            productPrice: null,
-            actions: [
-              {
-                text: "Cancel",
-                primary: false,
-                onPress: () => {
-                  setScanned(false);
-                  setBarcode(null);
-                },
-              },
-              {
-                text: "Add Product",
-                primary: true,
-                onPress: () => {
-                  router.navigate({
-                    pathname: "/(root)/product-detail",
-                    params: { barcode },
-                  });
-                  setBarcode(null);
-                },
-              },
-            ],
-          });
-          setModalVisible(true);
+          showProductNotFoundModal();
         }
       } else if (scanMode === "checkout") {
         if (productToUse) {
@@ -330,61 +357,15 @@ const ScannerScreen = () => {
             setTimeout(() => {
               setScanned(false);
               setBarcode(null);
+              setIsScanning(false);
             }, 1000);
           } else {
             // Show out of stock modal
-            setModalConfig({
-              title: "Out of Stock",
-              message: "This product is currently out of stock.",
-              status: "error",
-              productName: productToUse.name,
-              productPrice: productToUse.price,
-              actions: [
-                {
-                  text: "OK",
-                  primary: true,
-                  onPress: () => {
-                    setScanned(false);
-                    setBarcode(null);
-                  },
-                },
-              ],
-            });
-            setModalVisible(true);
+            showOutOfStockModal(productToUse);
           }
         } else if ((productError || !isLoadingProduct) && !manuallyChecking) {
           // Show product not found modal
-          setModalConfig({
-            title: "Product Not Found",
-            message: "This product doesn't exist in your inventory.",
-            status: "warning",
-            productName: null,
-            productPrice: null,
-            actions: [
-              {
-                text: "Scan Again",
-                primary: false,
-                icon: "scan-outline",
-                onPress: () => {
-                  setScanned(false);
-                  setBarcode(null);
-                },
-              },
-              {
-                text: "Add Product",
-                primary: true,
-                icon: "add-circle-outline",
-                onPress: () => {
-                  router.navigate({
-                    pathname: "/(root)/product-detail",
-                    params: { barcode },
-                  });
-                  setBarcode(null);
-                },
-              },
-            ],
-          });
-          setModalVisible(true);
+          showProductNotFoundModal();
         }
       }
     };
@@ -413,20 +394,16 @@ const ScannerScreen = () => {
     type: string;
     data: any;
   }) => {
-    // Prevent scanning the same barcode multiple times in a short period
-    const now = Date.now();
+    // If already scanning or scanned, ignore new scans
+    if (isScanning || scanned) return;
 
-    // Check if this is the same barcode and if it was scanned within the last 3 seconds
-    if (data === lastScannedBarcode && now - lastScannedTime < 3000) {
-      // Skip this scan - it's likely a duplicate
-      return;
+    // Set scanning state to true to prevent multiple scans
+    setIsScanning(true);
+
+    // Clear any existing timeout
+    if (scanDebounceTimeout) {
+      clearTimeout(scanDebounceTimeout);
     }
-
-    if (scanned) return;
-
-    // Update last scanned info
-    setLastScannedBarcode(data);
-    setLastScannedTime(now);
 
     log.info(`Scanned barcode: ${data} (type: ${type})`);
     setScanned(true);
@@ -437,12 +414,29 @@ const ScannerScreen = () => {
 
     // Also try to check inventory manually
     checkInventory();
+
+    // Set a timeout to reset the scanning state after a delay
+    const timeout = setTimeout(() => {
+      setIsScanning(false);
+    }, 3000); // 3 seconds debounce
+
+    setScanDebounceTimeout(timeout);
   };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scanDebounceTimeout) {
+        clearTimeout(scanDebounceTimeout);
+      }
+    };
+  }, [scanDebounceTimeout]);
 
   const handleScanAgain = () => {
     setScanned(false);
     setBarcode(null);
     setCurrentProductId(null);
+    setIsScanning(false);
   };
 
   const toggleScanMode = useCallback(() => {
@@ -452,6 +446,7 @@ const ScannerScreen = () => {
     setScanned(false);
     setBarcode(null);
     setCurrentProductId(null);
+    setIsScanning(false);
   }, []);
 
   const handleManualEntry = useCallback(() => {
@@ -464,6 +459,63 @@ const ScannerScreen = () => {
 
   const renderProductImage = () => {
     return <Ionicons name="cube-outline" size={30} color="#64748b" />;
+  };
+
+  // Update modal config for out of stock
+  const showOutOfStockModal = (product: ProductItem) => {
+    setModalConfig({
+      title: "Out of Stock",
+      message: "This product is currently out of stock.",
+      status: "error",
+      productName: product.name,
+      productPrice: product.price.toString(),
+      actions: [
+        {
+          text: "OK",
+          primary: true,
+          onPress: () => {
+            setScanned(false);
+            setBarcode(null);
+            setIsScanning(false);
+          },
+        },
+      ],
+    });
+    setModalVisible(true);
+  };
+
+  // Update modal config for product not found
+  const showProductNotFoundModal = () => {
+    setModalConfig({
+      title: "Product Not Found",
+      message: "This product doesn't exist in your inventory.",
+      status: "warning",
+      productName: null,
+      productPrice: null,
+      actions: [
+        {
+          text: "Cancel",
+          primary: false,
+          onPress: () => {
+            setScanned(false);
+            setBarcode(null);
+            setIsScanning(false);
+          },
+        },
+        {
+          text: "Add Product",
+          primary: true,
+          onPress: () => {
+            router.navigate({
+              pathname: "/(root)/product-detail",
+              params: { barcode },
+            });
+            setBarcode(null);
+          },
+        },
+      ],
+    });
+    setModalVisible(true);
   };
 
   if (hasPermission === null) {
@@ -491,7 +543,9 @@ const ScannerScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* Scan mode toggle component */}
       <ScanModeToggle scanMode={scanMode} onToggle={toggleScanMode} />
 
@@ -518,7 +572,9 @@ const ScannerScreen = () => {
               "pdf417",
             ],
           }}
-          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          onBarcodeScanned={
+            scanned || isScanning ? undefined : handleBarCodeScanned
+          }
         />
 
         {/* Scanner overlay with scan area */}
@@ -537,14 +593,14 @@ const ScannerScreen = () => {
           visible={toast.visible}
           message={toast.message}
           productName={toast.productName}
-          productPrice={toast.productPrice}
+          productPrice={parseFloat(toast.productPrice || "0")}
         />
       </View>
 
       {/* Bottom action bar for manual entry or view cart */}
       <BottomActionBar scanMode={scanMode} onPress={handleManualEntry} />
 
-      {/* Scanner Modal for results and actions */}
+      {/* Scanner Modal with updated colors */}
       <ScannerModal
         visible={modalVisible}
         title={modalConfig.title}
@@ -555,6 +611,15 @@ const ScannerScreen = () => {
         productImage={modalConfig.productName ? renderProductImage() : null}
         actions={modalConfig.actions}
         onClose={handleCloseModal}
+        colors={{
+          text: colors.text,
+          background: colors.background,
+          primary: colors.primary,
+          success: colors.success,
+          error: colors.error,
+          warning: colors.warning,
+          icon: colors.icon,
+        }}
       />
     </SafeAreaView>
   );
@@ -563,7 +628,6 @@ const ScannerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
     paddingTop: StatusBar.currentHeight,
   },
   cameraContainer: {
@@ -575,10 +639,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 50,
     fontSize: 16,
-    color: "#64748b",
+    color: Colors.light.text,
   },
   permissionButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.light.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -586,17 +650,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   permissionButtonText: {
-    color: "#fff",
+    color: Colors.light.background,
     fontWeight: "bold",
     fontSize: 16,
   },
-  // Toast styles
   toast: {
     position: "absolute",
     bottom: 80,
     left: 20,
     right: 20,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.background,
     borderRadius: 12,
     padding: 12,
     flexDirection: "row",
@@ -619,11 +682,11 @@ const styles = StyleSheet.create({
   toastTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.light.text,
   },
   toastSubtitle: {
     fontSize: 14,
-    color: "#64748b",
+    color: Colors.light.icon,
     marginTop: 2,
   },
 });

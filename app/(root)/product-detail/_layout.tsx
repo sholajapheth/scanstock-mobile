@@ -7,6 +7,12 @@ export default function ProductDetailLayout() {
     <View style={styles.container}>
       <Stack>
         <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="[id]"
           options={{
             headerShown: false,

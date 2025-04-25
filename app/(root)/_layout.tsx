@@ -2,6 +2,7 @@ import { Stack, Redirect } from "expo-router";
 import { InventoryProvider } from "../../src/context/InventoryContext";
 import { useUser } from "@/src/hooks/useAuth";
 import { View, Text, ActivityIndicator } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 export default function RootLayout() {
   const { isAuthenticated, isLoading } = useUser();
@@ -87,6 +88,10 @@ export default function RootLayout() {
           options={{
             title: "Search",
             headerBackTitle: "Back",
+            headerTintColor: "#ffffff",
+            headerStyle: {
+              backgroundColor: "#00A651",
+            },
           }}
         />
       </Stack>

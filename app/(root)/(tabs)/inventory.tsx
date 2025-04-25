@@ -14,9 +14,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useProducts, useSearchProducts } from "@/src/hooks/useProducts";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { Product } from "@/src/hooks/useProducts";
-
+import { formatCurrency } from "@/src/utils/format";
 // Custom hook to debounce search input
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -111,9 +111,7 @@ const InventoryScreen = () => {
         </Text>
         <Text style={styles.productBarcode}>{item.barcode}</Text>
         <View style={styles.productMeta}>
-          <Text style={styles.productPrice}>
-            ${typeof item.price === "number" ? item.price.toFixed(2) : "0.00"}
-          </Text>
+          <Text style={styles.productPrice}>{formatCurrency(item.price)}</Text>
           <View
             style={[
               styles.stockBadge,
@@ -208,7 +206,7 @@ const InventoryScreen = () => {
         <Text style={styles.headerTitle}>Inventory</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push("/(root)/product-detail/new")}
+          onPress={() => router.push("/scanner")}
         >
           <Ionicons name="add-circle-outline" size={24} color="#00A651" />
         </TouchableOpacity>
@@ -304,6 +302,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+    marginTop: StatusBar.currentHeight,
   },
   header: {
     flexDirection: "row",

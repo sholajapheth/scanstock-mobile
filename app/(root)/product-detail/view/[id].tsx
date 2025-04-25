@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useProduct } from "@/src/hooks/useProducts";
@@ -156,6 +157,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+    marginTop: StatusBar.currentHeight,
   },
   loadingContainer: {
     flex: 1,
@@ -185,7 +187,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
-    marginTop: 50,
   },
   headerTitle: {
     fontSize: 20,

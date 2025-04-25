@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../constants/Colors";
 
 /**
  * ScanModeToggle - A toggle component to switch between inventory and checkout modes
@@ -28,7 +29,7 @@ const ScanModeToggle = ({
         <Ionicons
           name="list-outline"
           size={20}
-          color={scanMode === "inventory" ? "#fff" : "#2563eb"}
+          color={scanMode === "inventory" ? "#fff" : Colors.light.primary}
         />
         <Text
           style={[
@@ -50,7 +51,7 @@ const ScanModeToggle = ({
         <Ionicons
           name="cart-outline"
           size={20}
-          color={scanMode === "checkout" ? "#fff" : "#2563eb"}
+          color={scanMode === "checkout" ? "#fff" : Colors.light.primary}
         />
         <Text
           style={[
@@ -82,14 +83,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginHorizontal: 8,
     borderWidth: 1,
-    borderColor: "#2563eb",
+    borderColor: Colors.light.primary,
   },
   activeModeButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.light.primary,
   },
   modeButtonText: {
     marginLeft: 4,
-    color: "#2563eb",
+    color: Colors.light.primary,
     fontWeight: "500",
   },
   activeModeButtonText: {

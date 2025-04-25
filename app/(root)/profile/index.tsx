@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, Href } from "expo-router";
@@ -213,6 +214,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+    marginTop: StatusBar.currentHeight,
   },
   loadingContainer: {
     flex: 1,

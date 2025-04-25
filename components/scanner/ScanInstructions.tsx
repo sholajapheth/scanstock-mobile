@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { Colors } from "../../constants/Colors";
 
 /**
  * ScanInstructions - A component that displays instructions based on scan mode
@@ -24,12 +25,15 @@ const styles = StyleSheet.create({
   instructionsContainer: {
     padding: 16,
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.light.background,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
   },
   instructionsText: {
-    color: "#64748b",
+    color: Colors.light.icon,
     fontSize: 14,
     textAlign: "center",
+    fontWeight: "500",
   },
 });
 

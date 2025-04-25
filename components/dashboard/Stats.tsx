@@ -33,10 +33,12 @@ const StatCard = ({
 
 const Stats = () => {
   // Fetch products data
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts();
+  const { data: products = [], isPending: isLoadingProducts } = useProducts();
 
   // Fetch sales statistics
-  const { data: salesStats, isLoading: isLoadingSales } = useSaleStatistics();
+  const { data: salesStats, isPending: isLoadingSales } = useSaleStatistics();
+
+  console.log("salesStats", salesStats);
 
   // Calculate stats
   const totalProducts = products.length;
@@ -77,7 +79,7 @@ const Stats = () => {
         />
         <StatCard
           title="Today's Sales"
-          value={`$${todaySales.toFixed(2)}`}
+          value={`${todaySales}`}
           icon="cash-outline"
           color="#3B82F6"
           onPress={() => router.push("/sales")}
